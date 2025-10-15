@@ -1,6 +1,6 @@
 <script>
   import { getContext } from 'svelte';
-  import { linkTo } from '../router/Router.js';
+  import { linkTo } from './Router.js';
   
   export let route;
   export let params = {};
