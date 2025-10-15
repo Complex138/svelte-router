@@ -8,6 +8,7 @@ export {
   getAllParams, 
   getRoutParams,
   linkTo,
+  navigate,
   updateUrlStore,
   updateAdditionalProps,
   setRoutes

@@ -174,3 +174,28 @@ export function getRoutesWithComponents() {
   return routes;
 }
 
+// Функция для программной навигации
+export function navigate(routePattern, params = {}, queryParams = {}, additionalProps = {}) {
+  // Генерируем URL
+  const url = linkTo(routePattern, params, queryParams);
+  
+  // Извлекаем только путь без query string для проверки
+  const pathOnly = url.split('?')[0];
+  
+  if (routeExists(pathOnly)) {
+    // Обновляем URL в браузере
+    window.history.pushState({}, '', url);
+    
+    // Обновляем дополнительные props
+    updateAdditionalProps(additionalProps);
+    
+    // Обновляем URL store
+    updateUrlStore();
+    
+    // Диспатчим событие для обновления компонентов
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  } else {
+    console.warn(`Route ${pathOnly} not found`);
+  }
+}
+

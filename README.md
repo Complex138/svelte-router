@@ -260,7 +260,32 @@ import CustomWidget from './components/CustomWidget.svelte';
 ### Programmatic Navigation
 
 ```javascript
-// Generate URLs programmatically
+// Automatic navigation with navigate() function
+import { navigate } from 'svelte-router-v5';
+
+// Simple navigation - automatically goes to the route
+navigate('/user/:id', {id: 123});
+// Navigates to: '/user/123'
+
+// With query parameters
+navigate('/user/:id', {id: 123}, {tab: 'profile', edit: 'true'});
+// Navigates to: '/user/123?tab=profile&edit=true'
+
+// With additional props (objects, functions, components)
+navigate('/user/:id', {id: 123}, {}, {
+  userData: { name: 'John', email: 'john@example.com' },
+  onSave: (data) => console.log('Saving:', data)
+});
+
+// Use in functions
+function goToUser(userId, tab = 'profile') {
+  navigate('/user/:id', {id: userId}, {tab});
+}
+```
+
+**URL Generation (without navigation):**
+```javascript
+// Generate URLs programmatically (without navigation)
 import { linkTo } from 'svelte-router-v5';
 
 // Simple URL generation
@@ -270,19 +295,13 @@ const userUrl = linkTo('/user/:id', {id: 123});
 // With query parameters
 const profileUrl = linkTo('/user/:id', {id: 123}, {tab: 'profile', edit: 'true'});
 // Result: '/user/123?tab=profile&edit=true'
-
-// Use in functions
-function navigateToUser(userId, tab = 'profile') {
-  const url = linkTo('/user/:id', {id: userId}, {tab});
-  window.location.href = url;
-}
 ```
 
 **Usage in component:**
 ```javascript
 // Navigation.svelte
 <script>
-  import { linkTo } from 'svelte-router-v5';
+  import { navigate } from 'svelte-router-v5';
   
   let users = [
     { id: 1, name: 'John' },
@@ -291,13 +310,18 @@ function navigateToUser(userId, tab = 'profile') {
   ];
   
   function goToUser(userId) {
-    const url = linkTo('/user/:id', { id: userId });
-    window.location.href = url;
+    navigate('/user/:id', { id: userId });
   }
   
   function goToUserProfile(userId, tab = 'profile') {
-    const url = linkTo('/user/:id', { id: userId }, { tab });
-    window.location.href = url;
+    navigate('/user/:id', { id: userId }, { tab });
+  }
+  
+  function goToUserWithData(userId) {
+    navigate('/user/:id', { id: userId }, {}, {
+      userData: { name: 'John Doe', email: 'john@example.com' },
+      onSave: (data) => console.log('Saving:', data)
+    });
   }
 </script>
 
@@ -313,10 +337,46 @@ function navigateToUser(userId, tab = 'profile') {
       <button on:click={() => goToUserProfile(user.id, 'settings')}>
         Settings
       </button>
+      <button on:click={() => goToUserWithData(user.id)}>
+        With Data
+      </button>
     </div>
   {/each}
 </div>
 ```
+
+**Getting data in target component (same as LinkTo):**
+```javascript
+// User.svelte - receives data the same way as LinkTo
+<script>
+  import { getRoutParams } from 'svelte-router-v5';
+  
+  // Get parameters from programmatic navigation
+  $: ({ id: userId, tab, userData, onSave } = $getRoutParams);
+  
+  function handleSave() {
+    if (onSave) {
+      onSave({ userId, userData });
+    }
+  }
+</script>
+
+<h1>User: {userId}</h1>
+{#if tab}
+  <p>Active tab: {tab}</p>
+{/if}
+
+{#if userData}
+  <div class="user-info">
+    <p>Name: {userData.name}</p>
+    <p>Email: {userData.email}</p>
+  </div>
+{/if}
+
+<button on:click={handleSave}>Save</button>
+```
+
+**Note:** The `navigate()` function automatically handles URL generation, navigation, and data passing. Data is received the same way regardless of navigation method (LinkTo or navigate). The `$getRoutParams` store contains all route parameters, query parameters, and additional props.
 
 ### Complex Route Patterns
 
@@ -487,8 +547,24 @@ Reactive store containing all route parameters, query parameters, and additional
 $: ({ id, userData, settings } = $getRoutParams);
 ```
 
+### `navigate(route, params, queryParams, additionalProps)`
+Function for automatic programmatic navigation.
+
+**Parameters:**
+- `route` (string) - Route pattern
+- `params` (object) - Route parameters
+- `queryParams` (object) - GET parameters
+- `additionalProps` (object) - Additional props to pass to component
+
+**Usage:**
+```javascript
+navigate('/user/:id', {id: 123}); // Navigate to /user/123
+navigate('/user/:id', {id: 123}, {tab: 'profile'}); // With query params
+navigate('/user/:id', {id: 123}, {}, {userData: {...}}); // With props
+```
+
 ### `linkTo(route, params, queryParams)`
-Function to generate URLs programmatically.
+Function to generate URLs programmatically (without navigation).
 
 **Parameters:**
 - `route` (string) - Route pattern
