@@ -1,5 +1,5 @@
 {
-  "name": "svelte-router",
+  "name": "svelte-router-v5",
   "version": "1.0.0",
   "description": "Simple and powerful router for Svelte 5 with automatic parameter extraction and reactive navigation",
   "main": "src/index.js",
