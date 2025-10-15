@@ -61,6 +61,27 @@ export const routes = {
 
 ### 2. Use the router in your main component:
 
+**Option 1: Using RouterView component (recommended):**
+```javascript
+// App.svelte
+<script>
+  import { createNavigation, LinkTo, RouterView } from 'svelte-router-v5';
+  import { routes } from './routes.js';
+  
+  const currentComponent = createNavigation(routes);
+</script>
+
+<main>
+  <nav>
+    <LinkTo route="/" className="nav-link">Home</LinkTo>
+    <LinkTo route="/user/:id" params={{id: 123}} className="nav-link">User 123</LinkTo>
+  </nav>
+  
+  <RouterView currentComponent={$currentComponent} />
+</main>
+```
+
+**Option 2: Manual component rendering:**
 ```javascript
 // App.svelte
 <script>
@@ -76,7 +97,7 @@ export const routes = {
     <LinkTo route="/user/:id" params={{id: 123}} className="nav-link">User 123</LinkTo>
   </nav>
   
-  <svelte:component this={$currentComponent.component} {...$currentComponent.props} />
+  <RouterView currentComponent={$currentComponent} />
 </main>
 ```
 
@@ -538,6 +559,17 @@ Navigation component with the following props:
 - `queryParams` (object) - GET parameters object  
 - `props` (object) - Additional props to pass to component
 - `className` (string) - CSS classes for the link
+
+### `RouterView` Component
+Component for rendering the current route. Automatically handles component and props.
+
+**Props:**
+- `currentComponent` (object) - Current component store from `createNavigation()`
+
+**Usage:**
+```javascript
+<RouterView currentComponent={$currentComponent} />
+```
 
 ### `getRoutParams`
 Reactive store containing all route parameters, query parameters, and additional props.

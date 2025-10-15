@@ -28,8 +28,11 @@ export interface CurrentComponent {
   props: RouteParams & QueryParams & AdditionalProps;
 }
 
-// Тип для функции навигации
+// Тип для функции навигации (старая версия)
 export type NavigateFunction = (path: string, additionalProps?: AdditionalProps) => void;
+
+// Тип для новой функции navigate
+export type NavigateFunctionV2 = (routePattern: string, params?: RouteParams, queryParams?: QueryParams, additionalProps?: AdditionalProps) => void;
 
 // Тип для LinkTo props
 export interface LinkToProps {
@@ -46,6 +49,11 @@ export interface UrlData {
   search: string;
 }
 
+// Тип для RouterView props
+export interface RouterViewProps {
+  currentComponent?: CurrentComponent;
+}
+
 // Экспорт основных типов
 export type {
   Routes,
@@ -54,6 +62,8 @@ export type {
   AdditionalProps,
   CurrentComponent,
   NavigateFunction,
+  NavigateFunctionV2,
   LinkToProps,
+  RouterViewProps,
   UrlData
 };

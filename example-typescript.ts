@@ -1,15 +1,15 @@
-// Пример использования svelte-router-v5 с TypeScript
+// Example usage of svelte-router-v5 with TypeScript
 
-import { createNavigation, LinkTo, getRoutParams, type Routes, type RouteParams } from 'svelte-router-v5';
+import { createNavigation, LinkTo, RouterView, navigate, getRoutParams, type Routes, type RouteParams } from 'svelte-router-v5';
 import type { ComponentType } from 'svelte';
 
-// Импорт компонентов
+// Import components
 import Home from './pages/Home.svelte';
 import About from './pages/About.svelte';
 import User from './pages/User.svelte';
 import NotFound from './pages/NotFound.svelte';
 
-// Типизированные маршруты
+// Typed routes
 const routes: Routes = {
   '/': Home,
   '/about': About,
@@ -18,12 +18,12 @@ const routes: Routes = {
   '*': NotFound,
 };
 
-// Создание навигации с типизацией
+// Create navigation with typing
 const currentComponent = createNavigation(routes);
 
-// Пример использования в компоненте
+// Example usage in component
 export function MyComponent() {
-  // Типизированные параметры
+  // Typed parameters
   const { id: userId, tab, theme }: RouteParams & { tab?: string; theme?: string } = $getRoutParams;
   
   return {
@@ -33,7 +33,7 @@ export function MyComponent() {
   };
 }
 
-// Пример использования LinkTo с типизацией
+// Example LinkTo usage with typing
 export const navigationLinks = [
   {
     route: '/',
@@ -56,5 +56,23 @@ export const navigationLinks = [
   }
 ];
 
-// Экспорт для использования
+// Programmatic navigation examples
+export const navigationFunctions = {
+  goToUser: (userId: string) => {
+    navigate('/user/:id', { id: userId });
+  },
+  
+  goToUserProfile: (userId: string, tab: string = 'profile') => {
+    navigate('/user/:id', { id: userId }, { tab });
+  },
+  
+  goToUserWithData: (userId: string) => {
+    navigate('/user/:id', { id: userId }, {}, {
+      userData: { name: 'John Doe', email: 'john@example.com' },
+      onSave: (data: any) => console.log('Saving:', data)
+    });
+  }
+};
+
+// Export for usage
 export { currentComponent, routes };
