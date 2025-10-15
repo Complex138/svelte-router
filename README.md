@@ -15,7 +15,7 @@ Simple and powerful router for Svelte 5 with automatic parameter extraction and 
 ## Installation
 
 ```bash
-npm install svelte-router
+npm install svelte-router-v5
 ```
 
 ## Quick Start
@@ -45,7 +45,7 @@ export const routes = {
 ```javascript
 // App.svelte
 <script>
-  import { createNavigation, LinkTo } from 'svelte-router';
+  import { createNavigation, LinkTo } from 'svelte-router-v5';
   
   const currentComponent = createNavigation();
 </script>
@@ -65,7 +65,7 @@ export const routes = {
 ```javascript
 // User.svelte
 <script>
-  import { getRoutParams } from 'svelte-router';
+  import { getRoutParams } from 'svelte-router-v5';
   
   // All parameters are automatically available
   $: ({ id: userId, postId, userData, settings } = $getRoutParams);
