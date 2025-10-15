@@ -1,0 +1,29 @@
+{
+  "name": "svelte-router",
+  "version": "1.0.0",
+  "description": "Simple and powerful router for Svelte 5 with automatic parameter extraction and reactive navigation",
+  "main": "src/index.js",
+  "type": "module",
+  "keywords": ["svelte", "router", "spa", "navigation", "svelte5", "reactive"],
+  "author": "Win32.trojan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Complex138/svelte-router.git"
+  },
+  "homepage": "https://github.com/Complex138/svelte-router#readme",
+  "bugs": {
+    "url": "https://github.com/Complex138/svelte-router/issues"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
+  "files": [
+    "src/**/*",
+    "README.md",
+    "package.json"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
