@@ -18,6 +18,24 @@ Simple and powerful router for Svelte 5 with automatic parameter extraction and 
 npm install svelte-router-v5
 ```
 
+## TypeScript Support
+
+This package includes full TypeScript support with type definitions:
+
+```typescript
+import { createNavigation, LinkTo, getRoutParams, type Routes, type RouteParams } from 'svelte-router-v5';
+
+// Typed routes
+const routes: Routes = {
+  '/': Home,
+  '/user/:id': User,
+  '*': NotFound
+};
+
+// Typed parameters
+const { id: userId, tab }: RouteParams & { tab?: string } = $getRoutParams;
+```
+
 ## Quick Start
 
 ### 1. Create a `routes.js` file in your project root:

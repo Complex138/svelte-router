@@ -9,6 +9,10 @@ export {
   getRoutParams,
   linkTo,
   updateUrlStore,
-  updateAdditionalProps
+  updateAdditionalProps,
+  setRoutes
 } from './Router.js';
 export { default as LinkTo } from './LinkTo.svelte';
+
+// Экспорт типов для TypeScript
+export * from './types.d.ts';

@@ -1,10 +1,12 @@
 // Логика навигации
-import { routeExists, getRouteComponent, getRouteParams, getQueryParams, getAllParams, updateUrlStore, updateAdditionalProps } from './Router.js';
+import { routeExists, getRouteComponent, getRouteParams, getQueryParams, getAllParams, updateUrlStore, updateAdditionalProps, setRoutes } from './Router.js';
 import { setContext } from 'svelte';
 import { writable } from 'svelte/store';
 
 // Создаем объект для управления навигацией
-export function createNavigation() {
+export function createNavigation(routesConfig = {}) {
+  // Устанавливаем routes
+  setRoutes(routesConfig);
   let currentPath = window.location.pathname;
   
   // Создаем реактивный store с компонентом и props
@@ -60,9 +62,6 @@ export function createNavigation() {
     updateUrlStore();
   });
 
-  // Отладка
-  console.log('Navigation загружен');
-  console.log('Текущий путь:', currentPath);
 
   // Передаем функцию navigate через контекст
   setContext('navigate', navigate);

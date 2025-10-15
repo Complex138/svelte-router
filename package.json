@@ -1,10 +1,11 @@
 {
   "name": "svelte-router-v5",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Simple and powerful router for Svelte 5 with automatic parameter extraction and reactive navigation",
   "main": "src/index.js",
+  "types": "src/types.d.ts",
   "type": "module",
-  "keywords": ["svelte", "router", "spa", "navigation", "svelte5", "reactive"],
+  "keywords": ["svelte", "router", "spa", "navigation", "svelte5", "reactive", "typescript"],
   "author": "Win32.trojan",
   "license": "MIT",
   "repository": {

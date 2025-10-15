@@ -1,13 +1,12 @@
 // Роутер - логика навигации
 import { writable, derived } from 'svelte/store';
 
-// Импортируем routes из корня проекта
+// Routes будут переданы через createNavigation
 let routes = {};
-try {
-  const routesModule = await import('/routes.js');
-  routes = routesModule.routes || {};
-} catch (error) {
-  console.warn('routes.js not found in project root, using empty routes');
+
+// Функция для установки routes
+export function setRoutes(routesConfig) {
+  routes = routesConfig;
 }
 
 // Создаем реактивный store для URL
@@ -128,22 +127,6 @@ export const getRoutParams = derived([urlStore, additionalPropsStore], ([urlData
   };
 });
 
-// Реактивная функция для получения параметров
-export function useRoutParams() {
-  return urlStore;
-}
-
-// Реактивная функция для получения параметров с деструктуризацией
-export function useRoutParamsData() {
-  let params = {};
-  urlStore.subscribe(() => {
-    params = {
-      ...getRouteParams(window.location.pathname),
-      ...getQueryParams()
-    };
-  });
-  return params;
-}
 
 // Функция для проверки существования маршрута
 export function routeExists(path) {
@@ -191,5 +174,3 @@ export function getRoutesWithComponents() {
   return routes;
 }
 
-// Экспорт маршрутов для отладки
-export { routes };
