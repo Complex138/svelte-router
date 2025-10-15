@@ -43,6 +43,7 @@ const { id: userId, tab }: RouteParams & { tab?: string } = $getRoutParams;
 ```javascript
 // routes.js
 import Home from './pages/Home.svelte';
+import About from './pages/About.svelte';
 import User from './pages/User.svelte';
 import Product from './pages/Product.svelte';
 import NotFound from './pages/NotFound.svelte';
@@ -64,8 +65,9 @@ export const routes = {
 // App.svelte
 <script>
   import { createNavigation, LinkTo } from 'svelte-router-v5';
+  import { routes } from './routes.js';
   
-  const currentComponent = createNavigation();
+  const currentComponent = createNavigation(routes);
 </script>
 
 <main>
@@ -118,6 +120,28 @@ export const routes = {
 </LinkTo>
 ```
 
+**Usage in component:**
+```javascript
+// User.svelte
+<script>
+  import { getRoutParams } from 'svelte-router-v5';
+  
+  // Get all parameters with one function
+  $: ({ id: userId, postId, tab, theme } = $getRoutParams);
+</script>
+
+<h1>User: {userId}</h1>
+{#if postId}
+  <p>Post ID: {postId}</p>
+{/if}
+{#if tab}
+  <p>Active tab: {tab}</p>
+{/if}
+{#if theme}
+  <p>Theme: {theme}</p>
+{/if}
+```
+
 ### Passing Complex Data
 
 ```javascript
@@ -142,6 +166,47 @@ export const routes = {
 </LinkTo>
 ```
 
+**Usage in component:**
+```javascript
+// User.svelte
+<script>
+  import { getRoutParams } from 'svelte-router-v5';
+  
+  // Get all data including objects and functions
+  $: ({ id: userId, userData, permissions, onSave } = $getRoutParams);
+  
+  function handleSave() {
+    if (onSave) {
+      onSave({ userId, userData });
+    }
+  }
+</script>
+
+<h1>User: {userId}</h1>
+
+{#if userData}
+  <div class="user-info">
+    <p>Name: {userData.name}</p>
+    <p>Email: {userData.email}</p>
+    <p>Theme: {userData.preferences.theme}</p>
+    <p>Notifications: {userData.preferences.notifications ? 'enabled' : 'disabled'}</p>
+  </div>
+{/if}
+
+{#if permissions}
+  <div class="permissions">
+    <h3>Permissions:</h3>
+    <ul>
+      {#each permissions as permission}
+        <li>{permission}</li>
+      {/each}
+    </ul>
+  </div>
+{/if}
+
+<button on:click={handleSave}>Save</button>
+```
+
 ### Passing Components
 
 ```javascript
@@ -159,11 +224,44 @@ import CustomWidget from './components/CustomWidget.svelte';
 </LinkTo>
 ```
 
+**Usage in component:**
+```javascript
+// Dashboard.svelte
+<script>
+  import { getRoutParams } from 'svelte-router-v5';
+  
+  // Get components and settings
+  $: ({ widgets, layout } = $getRoutParams);
+</script>
+
+<div class="dashboard layout-{layout}">
+  <h1>Dashboard</h1>
+  
+  {#if widgets}
+    <div class="widgets-grid">
+      {#each widgets as Widget}
+        <div class="widget">
+          <svelte:component this={Widget} />
+        </div>
+      {/each}
+    </div>
+  {/if}
+</div>
+
+<style>
+  .layout-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+  }
+</style>
+```
+
 ### Programmatic Navigation
 
 ```javascript
 // Generate URLs programmatically
-import { linkTo } from 'svelte-router';
+import { linkTo } from 'svelte-router-v5';
 
 // Simple URL generation
 const userUrl = linkTo('/user/:id', {id: 123});
@@ -178,6 +276,46 @@ function navigateToUser(userId, tab = 'profile') {
   const url = linkTo('/user/:id', {id: userId}, {tab});
   window.location.href = url;
 }
+```
+
+**Usage in component:**
+```javascript
+// Navigation.svelte
+<script>
+  import { linkTo } from 'svelte-router-v5';
+  
+  let users = [
+    { id: 1, name: 'John' },
+    { id: 2, name: 'Jane' },
+    { id: 3, name: 'Bob' }
+  ];
+  
+  function goToUser(userId) {
+    const url = linkTo('/user/:id', { id: userId });
+    window.location.href = url;
+  }
+  
+  function goToUserProfile(userId, tab = 'profile') {
+    const url = linkTo('/user/:id', { id: userId }, { tab });
+    window.location.href = url;
+  }
+</script>
+
+<div class="user-list">
+  <h2>User List</h2>
+  
+  {#each users as user}
+    <div class="user-item">
+      <span>{user.name}</span>
+      <button on:click={() => goToUser(user.id)}>
+        Go to User
+      </button>
+      <button on:click={() => goToUserProfile(user.id, 'settings')}>
+        Settings
+      </button>
+    </div>
+  {/each}
+</div>
 ```
 
 ### Complex Route Patterns
@@ -206,7 +344,7 @@ export const routes = {
 ```javascript
 // User.svelte
 <script>
-  import { getRoutParams } from 'svelte-router';
+  import { getRoutParams } from 'svelte-router-v5';
   
   $: ({ 
     id: userId, 
@@ -253,7 +391,7 @@ export const routes = {
 ```javascript
 // Navigation.svelte
 <script>
-  import { LinkTo } from 'svelte-router';
+  import { LinkTo } from 'svelte-router-v5';
   
   const menuItems = [
     { route: '/', label: 'Home' },
@@ -294,7 +432,7 @@ export const routes = {
 // 404 Page
 // NotFound.svelte
 <script>
-  import { getRoutParams } from 'svelte-router';
+  import { getRoutParams } from 'svelte-router-v5';
   
   $: ({ pathname } = $getRoutParams);
 </script>
