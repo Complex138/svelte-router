@@ -50,8 +50,21 @@ export const routes = {
 /*
 import { navigate, linkTo } from 'svelte-router-v5';
 
-// Automatic navigation
+// Method 1: Old format
 navigate('/user/:id', {id: 456}, {tab: 'profile'});
+
+// Method 2: New format with keys
+navigate('/user/:id', {
+  params: {id: 456},
+  queryParams: {tab: 'profile'},
+  props: {userData: {name: 'John'}}
+});
+
+// Method 3: Automatic detection
+navigate('/user/:id', {
+  id: 456,                    // Goes to params
+  userData: {name: 'John'}   // Goes to props
+});
 
 // URL generation only
 const url = linkTo('/user/:id', {id: 456}, {tab: 'profile'});

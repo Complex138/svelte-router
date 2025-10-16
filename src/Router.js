@@ -175,9 +175,42 @@ export function getRoutesWithComponents() {
 }
 
 // Функция для программной навигации
-export function navigate(routePattern, params = {}, queryParams = {}, additionalProps = {}) {
+export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, additionalProps = {}) {
+  let params, query, props;
+  
+  // Проверяем, передан ли объект с ключами (новый формат)
+  if (paramsOrConfig && typeof paramsOrConfig === 'object' && 
+      (paramsOrConfig.params || paramsOrConfig.queryParams || paramsOrConfig.props)) {
+    // Новый формат: navigate('/user/:id', {params: {...}, queryParams: {...}, props: {...}})
+    params = paramsOrConfig.params || {};
+    query = paramsOrConfig.queryParams || {};
+    props = paramsOrConfig.props || {};
+  } else if (paramsOrConfig && typeof paramsOrConfig === 'object' && 
+             !paramsOrConfig.params && !paramsOrConfig.queryParams && !paramsOrConfig.props) {
+    // Автоматическое определение: navigate('/user/:id', {id: 123, userData: {...}})
+    const routeParams = extractRouteParams(routePattern);
+    params = {};
+    props = {};
+    
+    // Разделяем параметры маршрута и дополнительные props
+    for (const [key, value] of Object.entries(paramsOrConfig)) {
+      if (routeParams.includes(key)) {
+        params[key] = value;
+      } else {
+        props[key] = value;
+      }
+    }
+    
+    query = queryParams || {};
+  } else {
+    // Старый формат: navigate('/user/:id', {id: 123}, {tab: 'profile'}, {userData: {...}})
+    params = paramsOrConfig || {};
+    query = queryParams || {};
+    props = additionalProps || {};
+  }
+  
   // Генерируем URL
-  const url = linkTo(routePattern, params, queryParams);
+  const url = linkTo(routePattern, params, query);
   
   // Извлекаем только путь без query string для проверки
   const pathOnly = url.split('?')[0];
@@ -187,7 +220,7 @@ export function navigate(routePattern, params = {}, queryParams = {}, additional
     window.history.pushState({}, '', url);
     
     // Обновляем дополнительные props
-    updateAdditionalProps(additionalProps);
+    updateAdditionalProps(props);
     
     // Обновляем URL store
     updateUrlStore();
@@ -197,5 +230,11 @@ export function navigate(routePattern, params = {}, queryParams = {}, additional
   } else {
     console.warn(`Route ${pathOnly} not found`);
   }
+}
+
+// Функция для извлечения параметров маршрута из паттерна
+function extractRouteParams(routePattern) {
+  const matches = routePattern.match(/:([^/]+)/g);
+  return matches ? matches.map(match => match.slice(1)) : [];
 }
 

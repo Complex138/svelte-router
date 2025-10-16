@@ -58,6 +58,7 @@ export const navigationLinks = [
 
 // Programmatic navigation examples
 export const navigationFunctions = {
+  // Method 1: Old format
   goToUser: (userId: string) => {
     navigate('/user/:id', { id: userId });
   },
@@ -70,6 +71,24 @@ export const navigationFunctions = {
     navigate('/user/:id', { id: userId }, {}, {
       userData: { name: 'John Doe', email: 'john@example.com' },
       onSave: (data: any) => console.log('Saving:', data)
+    });
+  },
+  
+  // Method 2: New format with keys
+  goToUserWithKeys: (userId: string, userData: any) => {
+    navigate('/user/:id', {
+      params: { id: userId },
+      queryParams: { tab: 'profile' },
+      props: { userData }
+    });
+  },
+  
+  // Method 3: Automatic detection
+  goToUserAuto: (userId: string, userData: any) => {
+    navigate('/user/:id', {
+      id: userId,        // Goes to params
+      userData,          // Goes to props
+      settings: { theme: 'dark' } // Goes to props
     });
   }
 };

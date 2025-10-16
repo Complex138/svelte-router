@@ -284,23 +284,46 @@ import CustomWidget from './components/CustomWidget.svelte';
 // Automatic navigation with navigate() function
 import { navigate } from 'svelte-router-v5';
 
-// Simple navigation - automatically goes to the route
+// Method 1: Old format (positional parameters)
 navigate('/user/:id', {id: 123});
 // Navigates to: '/user/123'
 
-// With query parameters
 navigate('/user/:id', {id: 123}, {tab: 'profile', edit: 'true'});
 // Navigates to: '/user/123?tab=profile&edit=true'
 
-// With additional props (objects, functions, components)
 navigate('/user/:id', {id: 123}, {}, {
   userData: { name: 'John', email: 'john@example.com' },
   onSave: (data) => console.log('Saving:', data)
 });
 
+// Method 2: New format with keys (recommended)
+navigate('/user/:id', {
+  params: {id: 123},
+  queryParams: {tab: 'profile', edit: 'true'},
+  props: {
+    userData: { name: 'John', email: 'john@example.com' },
+    onSave: (data) => console.log('Saving:', data)
+  }
+});
+
+// Method 3: Automatic detection (smart mode)
+navigate('/user/:id', {
+  id: 123,                    // Automatically goes to params (matches :id)
+  userData: { name: 'John' }, // Automatically goes to props
+  settings: { theme: 'dark' } // Automatically goes to props
+});
+// Result: id=123 -> params, everything else -> props
+
 // Use in functions
 function goToUser(userId, tab = 'profile') {
   navigate('/user/:id', {id: userId}, {tab});
+}
+
+function goToUserWithData(userId, userData) {
+  navigate('/user/:id', {
+    params: {id: userId},
+    props: {userData}
+  });
 }
 ```
 
@@ -579,20 +602,40 @@ Reactive store containing all route parameters, query parameters, and additional
 $: ({ id, userData, settings } = $getRoutParams);
 ```
 
-### `navigate(route, params, queryParams, additionalProps)`
-Function for automatic programmatic navigation.
+### `navigate(route, paramsOrConfig, queryParams?, additionalProps?)`
+Function for automatic programmatic navigation with multiple formats.
 
 **Parameters:**
 - `route` (string) - Route pattern
-- `params` (object) - Route parameters
-- `queryParams` (object) - GET parameters
-- `additionalProps` (object) - Additional props to pass to component
+- `paramsOrConfig` (object) - Route parameters or configuration object
+- `queryParams` (object, optional) - GET parameters (old format only)
+- `additionalProps` (object, optional) - Additional props (old format only)
 
 **Usage:**
+
+**Method 1: Old format (positional parameters)**
 ```javascript
 navigate('/user/:id', {id: 123}); // Navigate to /user/123
 navigate('/user/:id', {id: 123}, {tab: 'profile'}); // With query params
 navigate('/user/:id', {id: 123}, {}, {userData: {...}}); // With props
+```
+
+**Method 2: New format with keys (recommended)**
+```javascript
+navigate('/user/:id', {
+  params: {id: 123},
+  queryParams: {tab: 'profile'},
+  props: {userData: {...}}
+});
+```
+
+**Method 3: Automatic detection (smart mode)**
+```javascript
+navigate('/user/:id', {
+  id: 123,                    // Automatically goes to params (matches :id)
+  userData: { name: 'John' }, // Automatically goes to props
+  settings: { theme: 'dark' } // Automatically goes to props
+});
 ```
 
 ### `linkTo(route, params, queryParams)`

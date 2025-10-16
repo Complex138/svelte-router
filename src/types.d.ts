@@ -34,6 +34,16 @@ export type NavigateFunction = (path: string, additionalProps?: AdditionalProps)
 // Тип для новой функции navigate
 export type NavigateFunctionV2 = (routePattern: string, params?: RouteParams, queryParams?: QueryParams, additionalProps?: AdditionalProps) => void;
 
+// Тип для объекта конфигурации navigate
+export interface NavigateConfig {
+  params?: RouteParams;
+  queryParams?: QueryParams;
+  props?: AdditionalProps;
+}
+
+// Тип для автоматического navigate
+export type NavigateAuto = (routePattern: string, data: RouteParams & AdditionalProps, queryParams?: QueryParams) => void;
+
 // Тип для LinkTo props
 export interface LinkToProps {
   route: string;
@@ -63,6 +73,8 @@ export type {
   CurrentComponent,
   NavigateFunction,
   NavigateFunctionV2,
+  NavigateConfig,
+  NavigateAuto,
   LinkToProps,
   RouterViewProps,
   UrlData
