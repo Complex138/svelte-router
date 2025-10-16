@@ -17,7 +17,14 @@ export function getRouteComponentFromConfig(routeValue) {
 // Проверяет, является ли значение lazy-загружаемым компонентом (функция, возвращающая Promise)
 export function isLazyComponent(routeValue) {
   const component = isRouteConfig(routeValue) ? routeValue.component : routeValue;
-  return typeof component === 'function' && !component.prototype;
+  if (typeof component !== 'function') return false;
+  // Считаем ленивым ТОЛЬКО лоадер с dynamic import()
+  try {
+    const src = Function.prototype.toString.call(component);
+    return /\bimport\s*\(/.test(src);
+  } catch {
+    return false;
+  }
 }
 
 // Асинхронная загрузка компонента с кешированием
