@@ -8,9 +8,12 @@ Simple and powerful router for Svelte 5 with automatic parameter extraction, rea
 - 🔄 **Reactive navigation** with Svelte stores
 - 🎯 **Regular expression support** for advanced route validation
 - 🔐 **Middleware system** for authentication, authorization, and route guards
-- ⚡ **Lazy loading** - Load components on-demand for better performance
+- ⚡ **Lazy loading** (dynamic import) + helpers `lazy`, `lazyRoute`, `lazyGroup`
 - 📦 **Type-safe** parameter passing
-- 🎯 **Support for objects and components** in props
+- 🧩 **Route groups** with `prefix`, shared `middleware`, `beforeEnter/afterEnter`
+- ⏳ **Loading/Error UI** in `RouterView` with custom components support
+- 🚀 **Automatic prefetch** strategies in `LinkTo` (hover/visible/mount/none)
+- 🗃️ **Component cache** for prefetched/lazy components
 - 🔗 **Clean API** with `LinkTo` component
 - 📱 **SPA routing** with History API
 - 🎨 **Support for complex data types** (objects, arrays, functions, components)
@@ -1463,3 +1466,98 @@ export const routes = {
 ## License
 
 MIT
+
+---
+
+## Route Groups (prefix + shared middleware/hooks)
+
+Groups let you define a common prefix and shared meta (middleware, beforeEnter/afterEnter) for child routes. Groups are flattened at `setRoutes` time to a plain map; runtime stays fast.
+
+### Basic group
+
+```js
+import Home from './pages/Home.svelte';
+import Admin from './pages/Admin.svelte';
+import Users from './pages/Users.svelte';
+import Settings from './pages/Settings.svelte';
+import NotFound from './pages/NotFound.svelte';
+
+export const routes = {
+  '/': Home,
+
+  group: {
+    prefix: '/admin',
+    middleware: ['auth', 'admin'],
+    beforeEnter: async (ctx) => { console.log('enter admin'); return true; },
+    afterEnter: async (ctx) => { console.log('leave admin'); },
+    routes: {
+      '/': Admin,
+      '/users': Users,
+      '/settings': {
+        component: Settings,
+        middleware: ['audit']
+      }
+    }
+  },
+
+  '*': NotFound
+};
+// Final paths: /admin, /admin/users, /admin/settings
+// Effective middleware for /admin/settings: ['auth','admin','audit']
+```
+
+### Nested groups
+
+```js
+export const routes = {
+  group: {
+    prefix: '/app',
+    middleware: ['auth'],
+    routes: {
+      group: {
+        prefix: '/admin',
+        middleware: ['admin'],
+        routes: {
+          '/': () => import('./pages/admin/Dashboard.svelte'),
+          '/users': () => import('./pages/admin/Users.svelte')
+        }
+      },
+      '/profile': () => import('./pages/Profile.svelte')
+    }
+  },
+  '*': () => import('./pages/NotFound.svelte')
+};
+// Final: /app/admin, /app/admin/users, /app/profile
+// Shared middleware resolve: ['auth','admin'] for admin routes
+```
+
+### Combining with lazy helpers
+
+```js
+import { lazy, lazyRoute } from 'svelte-router-v5';
+
+export const routes = {
+  group: {
+    prefix: '/dashboard',
+    middleware: ['auth'],
+    routes: {
+      '/': lazy(() => import('./pages/Dashboard.svelte')),
+      '/reports': lazyRoute(() => import('./pages/Reports.svelte'), {
+        middleware: ['reports-access']
+      })
+    }
+  }
+};
+```
+
+### Hook composition order
+
+For a grouped route, hooks execute in this order:
+- beforeEnter: group.beforeEnter → route.beforeEnter
+- afterEnter: route.afterEnter → group.afterEnter
+
+If any beforeEnter returns `false`, navigation is cancelled.
+
+### Backward compatibility
+
+The old flat format still works unchanged. You can mix flat routes with groups. Only if a group adds meta (middleware/hooks), leaf routes are auto-wrapped into `RouteConfig` internally; no API changes required on your side.
