@@ -11,7 +11,17 @@ export {
   navigate,
   updateUrlStore,
   updateAdditionalProps,
-  setRoutes
+  setRoutes,
+  // Middleware exports
+  registerMiddleware,
+  registerGlobalMiddleware,
+  executeMiddleware,
+  executeGlobalMiddleware,
+  createMiddlewareContext,
+  getRouteMiddlewareByPath,
+  getRouteBeforeEnterByPath,
+  getRouteAfterEnterByPath,
+  getRoutePatternByPath
 } from './Router.js';
 export { default as LinkTo } from './LinkTo.svelte';
 export { default as RouterView } from './RouterView.svelte';

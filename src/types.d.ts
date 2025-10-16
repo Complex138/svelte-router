@@ -81,19 +81,58 @@ export interface RouterViewProps {
 // route может быть с регулярками или без: '/user/:id' или '/user/:id(\\d+)' - результат одинаковый
 export type LinkToFunction = (routePattern: string, params?: RouteParams, queryParams?: QueryParams) => string;
 
-// Экспорт основных типов
-export type {
-  Routes,
-  RouteParams,
-  QueryParams,
-  AdditionalProps,
-  CurrentComponent,
-  NavigateFunction,
-  NavigateFunctionV2,
-  NavigateConfig,
-  NavigateAuto,
-  LinkToProps,
-  LinkToFunction,
-  RouterViewProps,
-  UrlData
-};
+// ===== MIDDLEWARE TYPES =====
+
+// Контекст для middleware
+export interface MiddlewareContext {
+  from: string;                    // откуда переходим
+  to: string;                     // куда переходим
+  params: RouteParams;            // параметры роута
+  query: QueryParams;             // GET параметры
+  props: AdditionalProps;         // дополнительные props
+  navigate: NavigateFunctionV2;   // функция навигации
+  route: string;                  // паттерн роута
+}
+
+// Основная функция middleware
+export type MiddlewareFunction = (context: MiddlewareContext) => Promise<boolean> | boolean;
+
+// Error middleware функция
+export type ErrorMiddlewareFunction = (error: Error, context: MiddlewareContext) => Promise<void> | void;
+
+// Конфигурация middleware
+export interface MiddlewareConfig {
+  name: string;
+  options?: any;
+}
+
+// Тип для middleware в роуте (строка или объект)
+export type RouteMiddleware = string | MiddlewareConfig;
+
+// Конфигурация роута с middleware
+export interface RouteConfig {
+  component: ComponentType<SvelteComponent>;
+  middleware?: RouteMiddleware[];
+  beforeEnter?: MiddlewareFunction;
+  afterEnter?: MiddlewareFunction;
+}
+
+// Обновленный тип Routes с поддержкой middleware
+export interface RoutesWithMiddleware {
+  [route: string]: ComponentType<SvelteComponent> | RouteConfig;
+}
+
+// Реестр middleware
+export interface MiddlewareRegistry {
+  [name: string]: MiddlewareFunction;
+}
+
+// Глобальные middleware
+export interface GlobalMiddleware {
+  before?: MiddlewareFunction[];
+  after?: MiddlewareFunction[];
+  error?: ErrorMiddlewareFunction[];
+}
+
+// Экспорт основных типов (убираем дублирующие экспорты)
+// Все типы уже экспортированы выше как interface/type

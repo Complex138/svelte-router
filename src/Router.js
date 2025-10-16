@@ -104,7 +104,7 @@ function matchRoute(routePattern, actualPath) {
 export function getRouteComponent(path) {
   // Сначала проверяем точные маршруты
   if (routes[path]) {
-    return routes[path];
+    return getRouteComponentFromConfig(routes[path]);
   }
   
   // Получаем все роуты и сортируем их по специфичности
@@ -121,14 +121,14 @@ export function getRouteComponent(path) {
   });
   
   // Проверяем роуты в отсортированном порядке
-  for (const [routePattern, component] of routeEntries) {
+  for (const [routePattern, routeValue] of routeEntries) {
     if (matchRoute(routePattern, path)) {
-      return component;
+      return getRouteComponentFromConfig(routeValue);
     }
   }
   
   // Fallback на 404
-  return routes['*'];
+  return getRouteComponentFromConfig(routes['*']);
 }
 
 // Функция для парсинга GET параметров
@@ -232,6 +232,130 @@ export function getRoutesWithComponents() {
   return routes;
 }
 
+// Функция для получения middleware роута по пути
+export function getRouteMiddlewareByPath(path) {
+  // Сначала проверяем точные маршруты
+  if (routes[path]) {
+    return getRouteMiddleware(routes[path]);
+  }
+  
+  // Получаем все роуты и сортируем их по специфичности
+  const routeEntries = Object.entries(routes).filter(([pattern]) => pattern !== '*');
+  
+  // Сортируем: сначала роуты с регулярками (более специфичные), потом общие
+  routeEntries.sort(([a], [b]) => {
+    const aHasRegex = a.includes('(');
+    const bHasRegex = b.includes('(');
+    
+    if (aHasRegex && !bHasRegex) return -1; // a идет первым
+    if (!aHasRegex && bHasRegex) return 1;  // b идет первым
+    return 0; // порядок не важен
+  });
+  
+  // Проверяем роуты в отсортированном порядке
+  for (const [routePattern, routeValue] of routeEntries) {
+    if (matchRoute(routePattern, path)) {
+      return getRouteMiddleware(routeValue);
+    }
+  }
+  
+  // Fallback на 404
+  return getRouteMiddleware(routes['*']);
+}
+
+// Функция для получения beforeEnter роута по пути
+export function getRouteBeforeEnterByPath(path) {
+  // Сначала проверяем точные маршруты
+  if (routes[path]) {
+    return getRouteBeforeEnter(routes[path]);
+  }
+  
+  // Получаем все роуты и сортируем их по специфичности
+  const routeEntries = Object.entries(routes).filter(([pattern]) => pattern !== '*');
+  
+  // Сортируем: сначала роуты с регулярками (более специфичные), потом общие
+  routeEntries.sort(([a], [b]) => {
+    const aHasRegex = a.includes('(');
+    const bHasRegex = b.includes('(');
+    
+    if (aHasRegex && !bHasRegex) return -1; // a идет первым
+    if (!aHasRegex && bHasRegex) return 1;  // b идет первым
+    return 0; // порядок не важен
+  });
+  
+  // Проверяем роуты в отсортированном порядке
+  for (const [routePattern, routeValue] of routeEntries) {
+    if (matchRoute(routePattern, path)) {
+      return getRouteBeforeEnter(routeValue);
+    }
+  }
+  
+  // Fallback на 404
+  return getRouteBeforeEnter(routes['*']);
+}
+
+// Функция для получения afterEnter роута по пути
+export function getRouteAfterEnterByPath(path) {
+  // Сначала проверяем точные маршруты
+  if (routes[path]) {
+    return getRouteAfterEnter(routes[path]);
+  }
+  
+  // Получаем все роуты и сортируем их по специфичности
+  const routeEntries = Object.entries(routes).filter(([pattern]) => pattern !== '*');
+  
+  // Сортируем: сначала роуты с регулярками (более специфичные), потом общие
+  routeEntries.sort(([a], [b]) => {
+    const aHasRegex = a.includes('(');
+    const bHasRegex = b.includes('(');
+    
+    if (aHasRegex && !bHasRegex) return -1; // a идет первым
+    if (!aHasRegex && bHasRegex) return 1;  // b идет первым
+    return 0; // порядок не важен
+  });
+  
+  // Проверяем роуты в отсортированном порядке
+  for (const [routePattern, routeValue] of routeEntries) {
+    if (matchRoute(routePattern, path)) {
+      return getRouteAfterEnter(routeValue);
+    }
+  }
+  
+  // Fallback на 404
+  return getRouteAfterEnter(routes['*']);
+}
+
+// Функция для получения паттерна роута по пути
+export function getRoutePatternByPath(path) {
+  // Сначала проверяем точные маршруты
+  if (routes[path]) {
+    return path;
+  }
+  
+  // Получаем все роуты и сортируем их по специфичности
+  const routeEntries = Object.entries(routes).filter(([pattern]) => pattern !== '*');
+  
+  // Сортируем: сначала роуты с регулярками (более специфичные), потом общие
+  routeEntries.sort(([a], [b]) => {
+    const aHasRegex = a.includes('(');
+    const bHasRegex = b.includes('(');
+    
+    if (aHasRegex && !bHasRegex) return -1; // a идет первым
+    if (!aHasRegex && bHasRegex) return 1;  // b идет первым
+    return 0; // порядок не важен
+  });
+  
+  // Проверяем роуты в отсортированном порядке
+  for (const [routePattern, routeValue] of routeEntries) {
+    if (matchRoute(routePattern, path)) {
+      return routePattern;
+    }
+  }
+  
+  // Fallback на 404
+  return '*';
+}
+
 // Функция для программной навигации
 export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, additionalProps = {}) {
   let params, query, props;
@@ -294,5 +418,136 @@ export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, ad
 function extractRouteParams(routePattern) {
   const { params } = parseRoutePattern(routePattern);
   return params;
+}
+
+// ===== MIDDLEWARE SYSTEM =====
+
+// Реестр middleware
+const middlewareRegistry = {};
+
+// Глобальные middleware
+const globalMiddleware = {
+  before: [],
+  after: [],
+  error: []
+};
+
+// Функция для регистрации middleware
+export function registerMiddleware(name, middlewareFunction) {
+  middlewareRegistry[name] = middlewareFunction;
+}
+
+// Функция для регистрации глобального middleware
+export function registerGlobalMiddleware(type, middlewareFunction) {
+  if (globalMiddleware[type]) {
+    globalMiddleware[type].push(middlewareFunction);
+  }
+}
+
+// Функция для получения middleware по имени
+function getMiddleware(name) {
+  return middlewareRegistry[name];
+}
+
+// Функция для проверки, является ли роут конфигурацией с middleware
+function isRouteConfig(routeValue) {
+  return routeValue && typeof routeValue === 'object' && routeValue.component;
+}
+
+// Функция для получения компонента из роута (поддержка старого и нового формата)
+function getRouteComponentFromConfig(routeValue) {
+  if (isRouteConfig(routeValue)) {
+    return routeValue.component;
+  }
+  return routeValue;
+}
+
+// Функция для получения middleware из роута
+function getRouteMiddleware(routeValue) {
+  if (isRouteConfig(routeValue)) {
+    return routeValue.middleware || [];
+  }
+  return [];
+}
+
+// Функция для получения beforeEnter из роута
+function getRouteBeforeEnter(routeValue) {
+  if (isRouteConfig(routeValue)) {
+    return routeValue.beforeEnter;
+  }
+  return null;
+}
+
+// Функция для получения afterEnter из роута
+function getRouteAfterEnter(routeValue) {
+  if (isRouteConfig(routeValue)) {
+    return routeValue.afterEnter;
+  }
+  return null;
+}
+
+// Функция для выполнения middleware
+export async function executeMiddleware(middlewareList, context) {
+  for (const middlewareItem of middlewareList) {
+    let middlewareFunction;
+    
+    if (typeof middlewareItem === 'string') {
+      // Простое имя middleware
+      middlewareFunction = getMiddleware(middlewareItem);
+      if (!middlewareFunction) {
+        console.warn(`Middleware "${middlewareItem}" not found`);
+        continue;
+      }
+    } else if (middlewareItem && typeof middlewareItem === 'object' && middlewareItem.name) {
+      // Конфигурация middleware
+      middlewareFunction = getMiddleware(middlewareItem.name);
+      if (!middlewareFunction) {
+        console.warn(`Middleware "${middlewareItem.name}" not found`);
+        continue;
+      }
+      // Добавляем опции в контекст
+      context.middlewareOptions = middlewareItem.options;
+    }
+    
+    if (middlewareFunction) {
+      try {
+        const result = await middlewareFunction(context);
+        if (result === false) {
+          return false; // Блокируем переход
+        }
+      } catch (error) {
+        console.error(`Error in middleware:`, error);
+        // Выполняем error middleware
+        for (const errorMiddleware of globalMiddleware.error) {
+          try {
+            await errorMiddleware(error, context);
+          } catch (errorHandlerError) {
+            console.error(`Error in error middleware:`, errorHandlerError);
+          }
+        }
+        return false; // Блокируем переход при ошибке
+      }
+    }
+  }
+  return true; // Разрешаем переход
+}
+
+// Функция для выполнения глобальных middleware
+export async function executeGlobalMiddleware(type, context) {
+  const middlewareList = globalMiddleware[type] || [];
+  return await executeMiddleware(middlewareList, context);
+}
+
+// Функция для создания контекста middleware
+export function createMiddlewareContext(from, to, params, query, props, navigate, route) {
+  return {
+    from,
+    to,
+    params,
+    query,
+    props,
+    navigate,
+    route
+  };
 }
 

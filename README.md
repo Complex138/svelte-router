@@ -7,6 +7,7 @@ Simple and powerful router for Svelte 5 with automatic parameter extraction, rea
 - 🚀 **Automatic parameter extraction** from URL routes
 - 🔄 **Reactive navigation** with Svelte stores
 - 🎯 **Regular expression support** for advanced route validation
+- 🔐 **Middleware system** for authentication, authorization, and route guards
 - 📦 **Type-safe** parameter passing
 - 🎯 **Support for objects and components** in props
 - 🔗 **Clean API** with `LinkTo` component
@@ -814,6 +815,57 @@ navigate('/post/:id/:action', {id: 789, action: 'edit'});                    // 
 - `navigate()` and `linkTo()` strip regex patterns when generating URLs
 - The router validates parameters against route regex patterns during navigation
 - Invalid parameters (e.g., letters in `:id(\\d+)`) will prevent navigation
+
+## Middleware System 🔐
+
+The router includes a powerful middleware system for authentication, authorization, and route guards.
+
+### Quick Middleware Example
+
+```javascript
+import { registerMiddleware, registerGlobalMiddleware } from 'svelte-router-v5';
+
+// Register middleware
+registerMiddleware('auth', async (context) => {
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    context.navigate('/login');
+    return false; // Block navigation
+  }
+  return true; // Allow navigation
+});
+
+// Configure routes with middleware
+export const routes = {
+  '/': Home,
+  '/profile': {
+    component: Profile,
+    middleware: ['auth', 'logger']
+  },
+  '/admin': {
+    component: Admin,
+    middleware: ['auth', 'admin']
+  }
+};
+```
+
+### Middleware Features
+
+- ✅ **Authentication guards** - Protect routes requiring login
+- ✅ **Authorization checks** - Role and permission-based access control
+- ✅ **Route guards** - Custom logic before/after navigation
+- ✅ **Global middleware** - Apply to all routes
+- ✅ **Async support** - Handle API calls and async operations
+- ✅ **Error handling** - Automatic error middleware execution
+- ✅ **Context access** - Full navigation context in middleware
+
+### Available Middleware Types
+
+1. **Route Middleware** - Applied to specific routes
+2. **Global Middleware** - Applied to all routes (before/after/error)
+3. **beforeEnter/afterEnter** - Route-specific hooks
+
+For complete middleware documentation, see [MIDDLEWARE.md](./MIDDLEWARE.md).
 
 ## License
 
