@@ -1,6 +1,7 @@
 // Разрешение маршрутов и компонентов
 import { getRoutes } from './routes-store.js';
 import { matchRoute } from './route-pattern.js';
+import { getCachedComponent, setCachedComponent, hasCachedComponent } from './component-cache.js';
 
 export function isRouteConfig(routeValue) {
   return routeValue && typeof routeValue === 'object' && routeValue.component;
@@ -19,14 +20,26 @@ export function isLazyComponent(routeValue) {
   return typeof component === 'function' && !component.prototype;
 }
 
-// Асинхронная загрузка компонента
-export async function loadLazyComponent(routeValue) {
+// Асинхронная загрузка компонента с кешированием
+export async function loadLazyComponent(routeValue, cacheKey = null) {
+  // Проверяем кеш, если передан ключ
+  if (cacheKey && hasCachedComponent(cacheKey)) {
+    return getCachedComponent(cacheKey);
+  }
+
   const component = isRouteConfig(routeValue) ? routeValue.component : routeValue;
 
   if (typeof component === 'function' && !component.prototype) {
     try {
       const module = await component();
-      return module.default || module;
+      const loadedComponent = module.default || module;
+
+      // Сохраняем в кеш
+      if (cacheKey) {
+        setCachedComponent(cacheKey, loadedComponent);
+      }
+
+      return loadedComponent;
     } catch (error) {
       console.error('Failed to load lazy component:', error);
       throw error;

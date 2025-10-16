@@ -50,7 +50,7 @@ export function createNavigation(routesConfig = {}) {
       })?.[1] || routes['*'];
 
       if (isLazyComponent(routeValue)) {
-        const component = await loadLazyComponent(routeValue);
+        const component = await loadLazyComponent(routeValue, currentPath);
         currentComponent.set({
           component,
           props: {
@@ -168,7 +168,7 @@ export function createNavigation(routesConfig = {}) {
 
         let component;
         if (isLazyComponent(routeValue)) {
-          component = await loadLazyComponent(routeValue);
+          component = await loadLazyComponent(routeValue, toPath);
         } else {
           component = getRouteComponent(currentPath);
         }
@@ -300,7 +300,7 @@ export function createNavigation(routesConfig = {}) {
 
         let component;
         if (isLazyComponent(routeValue)) {
-          component = await loadLazyComponent(routeValue);
+          component = await loadLazyComponent(routeValue, toPath);
         } else {
           component = getRouteComponent(currentPath);
         }

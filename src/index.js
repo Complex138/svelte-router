@@ -38,5 +38,29 @@ export {
   lazyGroup
 } from './utils/lazy.js';
 
+// Prefetch utilities
+export {
+  prefetchRoute,
+  prefetchAll,
+  prefetchOnIdle,
+  prefetchWithDelay,
+  createHoverPrefetch,
+  createVisibilityPrefetch,
+  prefetchRelated,
+  createSmartPrefetch,
+  prefetchWithNetworkAware
+} from './core/prefetch.js';
+
+// Component cache utilities
+export {
+  getCachedComponent,
+  setCachedComponent,
+  hasCachedComponent,
+  clearComponentCache,
+  removeCachedComponent,
+  getCacheSize,
+  getCachedPaths
+} from './core/component-cache.js';
+
 // Экспорт типов для TypeScript
 export * from './types.d.ts';

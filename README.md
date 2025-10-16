@@ -1072,14 +1072,244 @@ You can provide custom components for loading and error states:
 </style>
 ```
 
+### Automatic Prefetching 🚀
+
+The router includes automatic prefetching to load components before navigation for instant page transitions.
+
+#### Prefetch Strategies
+
+`LinkTo` component supports multiple prefetch strategies via the `prefetch` prop:
+
+```javascript
+<script>
+  import { LinkTo } from 'svelte-router-v5';
+</script>
+
+<!-- Prefetch on hover (default) - loads when mouse enters link -->
+<LinkTo route="/user/:id" params={{id: 123}} prefetch="hover">
+  User Profile
+</LinkTo>
+
+<!-- Prefetch when visible - loads when link appears in viewport -->
+<LinkTo route="/admin" prefetch="visible">
+  Admin Dashboard
+</LinkTo>
+
+<!-- Prefetch on mount - loads immediately when component mounts -->
+<LinkTo route="/settings" prefetch="mount">
+  Settings
+</LinkTo>
+
+<!-- Disable prefetch -->
+<LinkTo route="/logout" prefetch="none">
+  Logout
+</LinkTo>
+
+<!-- Custom hover delay (in ms) -->
+<LinkTo route="/profile" prefetch="hover" prefetchDelay={100}>
+  Profile
+</LinkTo>
+```
+
+**Prefetch strategies:**
+- `hover` (default) - Prefetch when mouse hovers over link (50ms delay)
+- `visible` - Prefetch when link enters viewport (uses Intersection Observer)
+- `mount` - Prefetch immediately when link component mounts
+- `none` - Disable automatic prefetching
+
+#### Manual Prefetching
+
+You can manually prefetch routes using utility functions:
+
+```javascript
+<script>
+  import { prefetchRoute, prefetchAll, prefetchOnIdle } from 'svelte-router-v5';
+  import { onMount } from 'svelte';
+
+  onMount(() => {
+    // Prefetch a specific route
+    prefetchRoute('/dashboard');
+
+    // Prefetch all routes (useful after initial load)
+    prefetchAll();
+
+    // Prefetch specific routes with options
+    prefetchAll({
+      priority: ['/dashboard', '/profile'], // Load these first
+      exclude: ['/admin', '/settings']      // Don't load these
+    });
+
+    // Prefetch when browser is idle
+    prefetchOnIdle(['/reports', '/analytics'], {
+      timeout: 2000 // Fallback timeout in ms
+    });
+  });
+</script>
+```
+
+#### Advanced Prefetch Utilities
+
+```javascript
+<script>
+  import {
+    prefetchRoute,
+    prefetchRelated,
+    prefetchWithNetworkAware,
+    createSmartPrefetch
+  } from 'svelte-router-v5';
+
+  // Prefetch related routes (e.g., pagination)
+  function prefetchPagination(currentPage) {
+    prefetchRelated([
+      `/posts/page/${currentPage + 1}`,
+      `/posts/page/${currentPage - 1}`
+    ], {
+      parallel: true,  // Load in parallel
+      delay: 500       // Wait 500ms before prefetching
+    });
+  }
+
+  // Network-aware prefetching (skips on slow connections)
+  function handleHover() {
+    prefetchWithNetworkAware('/heavy-dashboard');
+  }
+
+  // Smart prefetch - learns from navigation patterns
+  const smartPrefetch = createSmartPrefetch(10); // Track last 10 navigations
+
+  function onNavigate(from, to) {
+    smartPrefetch.recordNavigation(from, to);
+    // Auto-prefetch predicted next routes
+    smartPrefetch.prefetchPredicted(to, 2); // Prefetch top 2 predictions
+  }
+</script>
+```
+
+#### Component Caching
+
+Prefetched components are automatically cached to avoid redundant loads:
+
+```javascript
+<script>
+  import {
+    getCachedComponent,
+    hasCachedComponent,
+    clearComponentCache,
+    getCacheSize,
+    getCachedPaths
+  } from 'svelte-router-v5';
+
+  // Check if component is cached
+  if (hasCachedComponent('/dashboard')) {
+    console.log('Dashboard already loaded!');
+  }
+
+  // Get cached component
+  const dashboard = getCachedComponent('/dashboard');
+
+  // Get all cached route paths
+  console.log('Cached routes:', getCachedPaths());
+
+  // Check cache size
+  console.log('Cache size:', getCacheSize());
+
+  // Clear entire cache (e.g., on logout)
+  function logout() {
+    clearComponentCache();
+    navigate('/login');
+  }
+</script>
+```
+
+#### Prefetch Examples
+
+**Example 1: Hover with custom delay**
+```javascript
+<!-- Wait 200ms before prefetching (good for menus) -->
+<LinkTo route="/dashboard" prefetch="hover" prefetchDelay={200}>
+  Dashboard
+</LinkTo>
+```
+
+**Example 2: Visible prefetch for long pages**
+```javascript
+<!-- Only prefetch when user scrolls near the link -->
+<footer>
+  <LinkTo route="/about" prefetch="visible">About</LinkTo>
+  <LinkTo route="/contact" prefetch="visible">Contact</LinkTo>
+  <LinkTo route="/terms" prefetch="visible">Terms</LinkTo>
+</footer>
+```
+
+**Example 3: Strategic prefetching on mount**
+```javascript
+<script>
+  import { onMount } from 'svelte';
+  import { prefetchRoute, prefetchOnIdle } from 'svelte-router-v5';
+
+  onMount(() => {
+    // Prefetch critical routes immediately
+    prefetchRoute('/dashboard');
+
+    // Prefetch less critical routes when idle
+    prefetchOnIdle([
+      '/settings',
+      '/profile',
+      '/reports'
+    ]);
+  });
+</script>
+```
+
+**Example 4: Prefetch on user interaction**
+```javascript
+<script>
+  import { prefetchRoute } from 'svelte-router-v5';
+
+  let selectedTab = 'overview';
+
+  function handleTabChange(tab) {
+    selectedTab = tab;
+    // Prefetch the next likely tab
+    if (tab === 'overview') {
+      prefetchRoute('/dashboard/analytics');
+    }
+  }
+</script>
+
+<div class="tabs">
+  <button on:click={() => handleTabChange('overview')}>
+    Overview
+  </button>
+  <button on:click={() => handleTabChange('analytics')}>
+    Analytics
+  </button>
+</div>
+```
+
+**Example 5: Network-aware prefetching**
+```javascript
+<script>
+  import { prefetchWithNetworkAware } from 'svelte-router-v5';
+  import { onMount } from 'svelte';
+
+  onMount(() => {
+    // Only prefetch if network is fast enough
+    // Automatically skips on 2G/slow connections or save-data mode
+    prefetchWithNetworkAware('/heavy-dashboard');
+    prefetchWithNetworkAware('/large-report');
+  });
+</script>
+```
+
 ### Preloading Components
 
-You can preload components before navigation for instant transitions:
+Manual preloading for advanced use cases:
 
 ```javascript
 // Navigation.svelte
 <script>
-  import { LinkTo, preload } from 'svelte-router-v5';
+  import { preload } from 'svelte-router-v5';
 
   // Preload on hover for instant navigation
   function handleMouseEnter() {
@@ -1088,13 +1318,9 @@ You can preload components before navigation for instant transitions:
 </script>
 
 <nav>
-  <LinkTo
-    route="/user/:id"
-    params={{id: 123}}
-    on:mouseenter={handleMouseEnter}
-  >
+  <a href="/user/123" on:mouseenter={handleMouseEnter}>
     User Profile
-  </LinkTo>
+  </a>
 </nav>
 ```
 
