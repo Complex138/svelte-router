@@ -1,11 +1,12 @@
 # Svelte Router
 
-Simple and powerful router for Svelte 5 with automatic parameter extraction and reactive navigation.
+Simple and powerful router for Svelte 5 with automatic parameter extraction, reactive navigation, and **regular expression support** for advanced route validation.
 
 ## Features
 
 - 🚀 **Automatic parameter extraction** from URL routes
 - 🔄 **Reactive navigation** with Svelte stores
+- 🎯 **Regular expression support** for advanced route validation
 - 📦 **Type-safe** parameter passing
 - 🎯 **Support for objects and components** in props
 - 🔗 **Clean API** with `LinkTo` component
@@ -29,11 +30,15 @@ import { createNavigation, LinkTo, getRoutParams, type Routes, type RouteParams 
 const routes: Routes = {
   '/': Home,
   '/user/:id': User,
+  '/user/id/:id(\\d+)': User,
+  '/user/name/:userName([a-zA-Z]+)': User,
+  '/post/:id(\\d+)/:action(edit|delete)': Post,
+  '/api/:version(v\\d+)/:endpoint(users|posts|comments)': Api,
   '*': NotFound
 };
 
 // Typed parameters
-const { id: userId, tab }: RouteParams & { tab?: string } = $getRoutParams;
+const { id: userId, userName, action, version, endpoint, tab }: RouteParams & { tab?: string } = $getRoutParams;
 ```
 
 ## Quick Start
@@ -45,16 +50,24 @@ const { id: userId, tab }: RouteParams & { tab?: string } = $getRoutParams;
 import Home from './pages/Home.svelte';
 import About from './pages/About.svelte';
 import User from './pages/User.svelte';
-import Product from './pages/Product.svelte';
+import Post from './pages/Post.svelte';
+import Api from './pages/Api.svelte';
 import NotFound from './pages/NotFound.svelte';
 
 export const routes = {
   '/': Home,
   '/about': About,
+  
+  // Basic routes
   '/user/:id': User,
-  '/user/:id/edit': User,
-  '/user/:id/delete/:postId': User,
-  '/product/:category/:id': Product,
+  
+  // Routes with regular expressions for validation
+  '/user/id/:id(\\d+)': User,                    // Only numbers: /user/id/123 ✅, /user/id/abc ❌
+  '/user/name/:userName([a-zA-Z]+)': User,       // Only letters: /user/name/john ✅, /user/name/123 ❌
+  '/user/slug/:slug([a-zA-Z0-9-]+)': User,       // Letters, numbers, dashes: /user/slug/john-doe ✅
+  '/post/:id(\\d+)/:action(edit|delete)': Post,  // Specific values: /post/123/edit ✅
+  '/api/:version(v\\d+)/:endpoint(users|posts|comments)': Api, // API versions: /api/v1/users ✅
+  
   '*': NotFound
 };
 ```
@@ -75,6 +88,9 @@ export const routes = {
   <nav>
     <LinkTo route="/" className="nav-link">Home</LinkTo>
     <LinkTo route="/user/:id" params={{id: 123}} className="nav-link">User 123</LinkTo>
+    <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456</LinkTo>
+    <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John</LinkTo>
+    <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789</LinkTo>
   </nav>
   
   <RouterView currentComponent={$currentComponent} />
@@ -95,6 +111,9 @@ export const routes = {
   <nav>
     <LinkTo route="/" className="nav-link">Home</LinkTo>
     <LinkTo route="/user/:id" params={{id: 123}} className="nav-link">User 123</LinkTo>
+    <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456</LinkTo>
+    <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John</LinkTo>
+    <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789</LinkTo>
   </nav>
   
   <RouterView currentComponent={$currentComponent} />
@@ -109,12 +128,18 @@ export const routes = {
   import { getRoutParams } from 'svelte-router-v5';
   
   // All parameters are automatically available
-  $: ({ id: userId, postId, userData, settings } = $getRoutParams);
+  $: ({ id: userId, userName, slug, postId, action, version, endpoint, userData, settings } = $getRoutParams);
 </script>
 
-<h1>User: {userId}</h1>
+<h1>User: {userId || userName || slug}</h1>
 {#if postId}
   <p>Post ID: {postId}</p>
+{/if}
+{#if action}
+  <p>Action: {action}</p>
+{/if}
+{#if version && endpoint}
+  <p>API: {version}/{endpoint}</p>
 {/if}
 ```
 
@@ -313,6 +338,18 @@ navigate('/user/:id', {
   settings: { theme: 'dark' } // Automatically goes to props
 });
 // Result: id=123 -> params, everything else -> props
+
+// Regular expression routes with all methods
+navigate('/user/id/:id(\\d+)', {id: 123}); // Method 1
+navigate('/user/name/:userName([a-zA-Z]+)', {
+  params: {userName: 'john'},
+  props: {userData: {name: 'John'}}
+}); // Method 2
+navigate('/post/:id(\\d+)/:action(edit|delete)', {
+  id: 789,                    // Goes to params
+  action: 'edit',             // Goes to params
+  postData: {title: 'Test'}   // Goes to props
+}); // Method 3
 
 // Use in functions
 function goToUser(userId, tab = 'profile') {
@@ -569,8 +606,11 @@ const userRoutes = generateUserRoutes([
 
 ## API Reference
 
-### `createNavigation()`
-Creates a router instance. Automatically loads routes from `/routes.js`.
+### `createNavigation(routesConfig)`
+Creates a router instance with the provided routes configuration.
+
+**Parameters:**
+- `routesConfig` (object) - Routes configuration object
 
 **Returns:** Svelte store with current component and props.
 
@@ -606,7 +646,7 @@ $: ({ id, userData, settings } = $getRoutParams);
 Function for automatic programmatic navigation with multiple formats.
 
 **Parameters:**
-- `route` (string) - Route pattern
+- `route` (string) - Route pattern (supports regular expressions)
 - `paramsOrConfig` (object) - Route parameters or configuration object
 - `queryParams` (object, optional) - GET parameters (old format only)
 - `additionalProps` (object, optional) - Additional props (old format only)
@@ -618,6 +658,10 @@ Function for automatic programmatic navigation with multiple formats.
 navigate('/user/:id', {id: 123}); // Navigate to /user/123
 navigate('/user/:id', {id: 123}, {tab: 'profile'}); // With query params
 navigate('/user/:id', {id: 123}, {}, {userData: {...}}); // With props
+
+// Regular expression routes
+navigate('/user/id/:id(\\d+)', {id: 123}); // Only numbers
+navigate('/post/:id(\\d+)/:action(edit|delete)', {id: 789, action: 'edit'}); // Specific values
 ```
 
 **Method 2: New format with keys (recommended)**
@@ -627,6 +671,12 @@ navigate('/user/:id', {
   queryParams: {tab: 'profile'},
   props: {userData: {...}}
 });
+
+// Regular expression routes
+navigate('/user/name/:userName([a-zA-Z]+)', {
+  params: {userName: 'john'},
+  props: {userData: {name: 'John'}}
+});
 ```
 
 **Method 3: Automatic detection (smart mode)**
@@ -635,6 +685,13 @@ navigate('/user/:id', {
   id: 123,                    // Automatically goes to params (matches :id)
   userData: { name: 'John' }, // Automatically goes to props
   settings: { theme: 'dark' } // Automatically goes to props
+});
+
+// Regular expression routes
+navigate('/post/:id(\\d+)/:action(edit|delete)', {
+  id: 789,                    // Goes to params
+  action: 'edit',             // Goes to params
+  postData: {title: 'Test'}   // Goes to props
 });
 ```
 
@@ -654,6 +711,24 @@ Check if a route exists for the given path.
 ### `getRouteComponent(path)`
 Get the component for a given path.
 
+### `getRouteParams(path)`
+Get route parameters for a given path.
+
+### `getQueryParams()`
+Get query parameters from the current URL.
+
+### `getAllParams(path)`
+Get all parameters (route + query) for a given path.
+
+### `updateUrlStore()`
+Update the internal URL store (used internally).
+
+### `updateAdditionalProps(props)`
+Update additional props store (used internally).
+
+### `setRoutes(routesConfig)`
+Set routes configuration (used internally).
+
 ## Best Practices
 
 1. **Keep routes.js simple** - Only define route patterns and components
@@ -661,6 +736,44 @@ Get the component for a given path.
 3. **Pass complex data via props** - Don't serialize objects in URLs
 4. **Use TypeScript** - For better type safety and IDE support
 5. **Handle 404s gracefully** - Always include a catch-all route
+
+## Regular Expression Support
+
+The router supports regular expressions in route patterns for advanced validation:
+
+```javascript
+export const routes = {
+  // Basic routes
+  '/user/:id': User,
+  
+  // Routes with regular expressions
+  '/user/id/:id(\\d+)': User,                    // Only numbers: /user/id/123 ✅, /user/id/abc ❌
+  '/user/name/:userName([a-zA-Z]+)': User,       // Only letters: /user/name/john ✅, /user/name/123 ❌
+  '/user/slug/:slug([a-zA-Z0-9-]+)': User,       // Letters, numbers, dashes: /user/slug/john-doe ✅
+  '/post/:id(\\d+)/:action(edit|delete)': Post,  // Specific values: /post/123/edit ✅
+  '/api/:version(v\\d+)/:endpoint(users|posts|comments)': Api, // API versions: /api/v1/users ✅
+  
+  '*': NotFound
+};
+```
+
+### Regular Expression Examples:
+
+- `:id(\\d+)` - Only digits (123, 456)
+- `:userName([a-zA-Z]+)` - Only letters (john, alice)
+- `:slug([a-zA-Z0-9-]+)` - Letters, numbers, dashes (john-doe, user123)
+- `:action(edit|delete)` - Specific values (edit, delete)
+- `:version(v\\d+)` - Version format (v1, v2, v10)
+- `:endpoint(users|posts|comments)` - Limited options (users, posts, comments)
+
+### Route Priority:
+
+Routes with regular expressions are checked **before** basic routes to ensure proper validation:
+
+1. **Specific regex routes** (e.g., `/user/id/:id(\\d+)`)
+2. **General routes** (e.g., `/user/:id`)
+
+This ensures that `/user/123` matches the regex route (if it exists) before falling back to the general route.
 
 ## License
 

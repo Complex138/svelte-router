@@ -23,38 +23,81 @@ export function updateUrlStore() {
   });
 }
 
-// Функция для парсинга параметров из URL
-function parseParams(routePattern, actualPath) {
+// Функция для парсинга паттерна роута с регулярными выражениями
+function parseRoutePattern(routePattern) {
   const routeParts = routePattern.split('/');
-  const pathParts = actualPath.split('/');
-  const params = {};
+  const params = [];
+  let pattern = '';
   
   for (let i = 0; i < routeParts.length; i++) {
-    if (routeParts[i].startsWith(':')) {
-      const paramName = routeParts[i].slice(1);
-      params[paramName] = pathParts[i];
+    const part = routeParts[i];
+    
+    if (part === '') {
+      // Пустая часть (начало или конец)
+      if (i === 0) {
+        pattern = '/';
+      }
+      continue;
+    }
+    
+    if (part.startsWith(':')) {
+      // Проверяем есть ли регулярное выражение в скобках
+      const match = part.match(/^:([^(]+)(?:\(([^)]+)\))?$/);
+      if (match) {
+        const paramName = match[1];
+        const regex = match[2] || '[^/]+'; // По умолчанию любой символ кроме /
+        
+        params.push(paramName);
+        pattern += `/(${regex})`;
+      } else {
+        // Fallback для старых роутов
+        const paramName = part.slice(1);
+        params.push(paramName);
+        pattern += `/([^/]+)`;
+      }
+    } else {
+      // Обычная часть пути
+      if (pattern === '/') {
+        pattern += part;
+      } else {
+        pattern += '/' + part;
+      }
     }
   }
   
-  return params;
+  // Убираем лишние слеши
+  if (pattern === '/') {
+    pattern = '^/$';
+  } else {
+    pattern = '^' + pattern + '$';
+  }
+  
+  return { pattern, params };
+}
+
+// Функция для парсинга параметров из URL
+function parseParams(routePattern, actualPath) {
+  const { pattern, params } = parseRoutePattern(routePattern);
+  const regex = new RegExp(pattern);
+  const matches = actualPath.match(regex);
+  
+  if (!matches) {
+    return {};
+  }
+  
+  const result = {};
+  params.forEach((param, index) => {
+    result[param] = matches[index + 1];
+  });
+  
+  return result;
 }
 
 // Функция для проверки соответствия маршрута
 function matchRoute(routePattern, actualPath) {
-  const routeParts = routePattern.split('/');
-  const pathParts = actualPath.split('/');
-  
-  if (routeParts.length !== pathParts.length) {
-    return false;
-  }
-  
-  for (let i = 0; i < routeParts.length; i++) {
-    if (!routeParts[i].startsWith(':') && routeParts[i] !== pathParts[i]) {
-      return false;
-    }
-  }
-  
-  return true;
+  const { pattern } = parseRoutePattern(routePattern);
+  const regex = new RegExp(pattern);
+  return regex.test(actualPath);
 }
 
 // Функция для получения компонента по пути
@@ -64,9 +107,22 @@ export function getRouteComponent(path) {
     return routes[path];
   }
   
-  // Затем проверяем параметризованные маршруты
-  for (const [routePattern, component] of Object.entries(routes)) {
-    if (routePattern !== '*' && matchRoute(routePattern, path)) {
+  // Получаем все роуты и сортируем их по специфичности
+  const routeEntries = Object.entries(routes).filter(([pattern]) => pattern !== '*');
+  
+  // Сортируем: сначала роуты с регулярками (более специфичные), потом общие
+  routeEntries.sort(([a], [b]) => {
+    const aHasRegex = a.includes('(');
+    const bHasRegex = b.includes('(');
+    
+    if (aHasRegex && !bHasRegex) return -1; // a идет первым
+    if (!aHasRegex && bHasRegex) return 1;  // b идет первым
+    return 0; // порядок не важен
+  });
+  
+  // Проверяем роуты в отсортированном порядке
+  for (const [routePattern, component] of routeEntries) {
+    if (matchRoute(routePattern, path)) {
       return component;
     }
   }
@@ -155,9 +211,11 @@ export function getAllRoutes() {
 export function linkTo(routePattern, params = {}, queryParams = {}) {
   let url = routePattern;
   
-  // Заменяем параметры маршрута
+  // Заменяем параметры маршрута (учитываем регулярные выражения)
   for (const [key, value] of Object.entries(params)) {
-    url = url.replace(`:${key}`, value);
+    // Ищем параметр в формате :param или :param(regex)
+    const regex = new RegExp(`:${key}(?:\\([^)]+\\))?`, 'g');
+    url = url.replace(regex, value);
   }
   
   // Добавляем GET параметры
@@ -234,7 +292,7 @@ export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, ad
 
 // Функция для извлечения параметров маршрута из паттерна
 function extractRouteParams(routePattern) {
-  const matches = routePattern.match(/:([^/]+)/g);
-  return matches ? matches.map(match => match.slice(1)) : [];
+  const { params } = parseRoutePattern(routePattern);
+  return params;
 }
 

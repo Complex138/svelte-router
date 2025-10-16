@@ -7,14 +7,26 @@ import type { ComponentType } from 'svelte';
 import Home from './pages/Home.svelte';
 import About from './pages/About.svelte';
 import User from './pages/User.svelte';
+import Post from './pages/Post.svelte';
+import Api from './pages/Api.svelte';
 import NotFound from './pages/NotFound.svelte';
 
 // Typed routes
 const routes: Routes = {
   '/': Home,
   '/about': About,
+  
+  // Basic routes
   '/user/:id': User,
   '/user/:id/delete/:postId': User,
+  
+  // Routes with regular expressions for validation
+  '/user/id/:id(\\d+)': User,                    // Only numbers: /user/id/123 ✅, /user/id/abc ❌
+  '/user/name/:userName([a-zA-Z]+)': User,       // Only letters: /user/name/john ✅, /user/name/123 ❌
+  '/user/slug/:slug([a-zA-Z0-9-]+)': User,       // Letters, numbers, dashes: /user/slug/john-doe ✅
+  '/post/:id(\\d+)/:action(edit|delete)': Post,  // Specific values: /post/123/edit ✅
+  '/api/:version(v\\d+)/:endpoint(users|posts|comments)': Api, // API versions: /api/v1/users ✅
+  
   '*': NotFound,
 };
 
@@ -53,6 +65,21 @@ export const navigationLinks = [
     params: { id: '456' } as RouteParams,
     queryParams: { tab: 'profile', theme: 'dark' },
     className: 'text-blue-600 hover:text-blue-800 font-medium'
+  },
+  {
+    route: '/user/id/:id(\\d+)',
+    params: { id: '789' } as RouteParams,
+    className: 'text-blue-600 hover:text-blue-800 font-medium'
+  },
+  {
+    route: '/user/name/:userName([a-zA-Z]+)',
+    params: { userName: 'alice' } as RouteParams,
+    className: 'text-blue-600 hover:text-blue-800 font-medium'
+  },
+  {
+    route: '/post/:id(\\d+)/:action(edit|delete)',
+    params: { id: '123', action: 'edit' } as RouteParams,
+    className: 'text-blue-600 hover:text-blue-800 font-medium'
   }
 ];
 
@@ -90,6 +117,31 @@ export const navigationFunctions = {
       userData,          // Goes to props
       settings: { theme: 'dark' } // Goes to props
     });
+  },
+  
+  // Regular expression routes with all methods
+  goToUserByIdRegex: (userId: string) => {
+    navigate('/user/id/:id(\\d+)', { id: userId }); // Method 1
+  },
+  
+  goToUserByNameRegex: (userName: string, userData: any) => {
+    navigate('/user/name/:userName([a-zA-Z]+)', {
+      params: { userName },
+      props: { userData }
+    }); // Method 2
+  },
+  
+  goToPostActionRegex: (postId: string, action: 'edit' | 'delete', postData: any) => {
+    navigate('/post/:id(\\d+)/:action(edit|delete)', {
+      id: postId,        // Goes to params
+      action,            // Goes to params
+      postData           // Goes to props
+    }); // Method 3
+  },
+  
+  // Additional regular expression routes
+  goToApiEndpoint: (version: string, endpoint: string) => {
+    navigate('/api/:version(v\\d+)/:endpoint(users|posts|comments)', { version, endpoint });
   }
 };
 

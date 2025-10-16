@@ -42,8 +42,6 @@ export function createNavigation(routesConfig = {}) {
       });
       // Обновляем URL store
       updateUrlStore();
-    } else {
-      console.warn(`Маршрут ${pathOnly} не найден`);
     }
   }
 
