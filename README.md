@@ -113,32 +113,6 @@ export const routes = {
 </main>
 ```
 
-**Option 2: Manual component rendering:**
-```javascript
-// App.svelte
-<script>
-  import { createNavigation, LinkTo } from 'svelte-router-v5';
-  import { routes } from './routes.js';
-  
-  const currentComponent = createNavigation(routes);
-</script>
-
-<main>
-  <nav>
-    <LinkTo route="/" className="nav-link">Home</LinkTo>
-    <LinkTo route="/user/:id" params={{id: 123}} className="nav-link">User 123</LinkTo>
-    <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456 (with regex)</LinkTo>
-    <LinkTo route="/user/id/:id" params={{id: 456}} className="nav-link">User ID 456 (without regex)</LinkTo>
-    <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John (with regex)</LinkTo>
-    <LinkTo route="/user/name/:userName" params={{userName: "john"}} className="nav-link">User John (without regex)</LinkTo>
-    <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789 (with regex)</LinkTo>
-    <LinkTo route="/post/:id/:action" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789 (without regex)</LinkTo>
-  </nav>
-  
-  <RouterView currentComponent={$currentComponent} />
-</main>
-```
-
 ### 3. Get parameters in your components:
 
 ```javascript
