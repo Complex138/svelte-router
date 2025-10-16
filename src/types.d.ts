@@ -31,20 +31,32 @@ export interface CurrentComponent {
 // Тип для функции навигации (старая версия)
 export type NavigateFunction = (path: string, additionalProps?: AdditionalProps) => void;
 
-// Тип для новой функции navigate
-export type NavigateFunctionV2 = (routePattern: string, params?: RouteParams, queryParams?: QueryParams, additionalProps?: AdditionalProps) => void;
+// Тип для новой функции navigate (поддерживает все форматы)
+// Method 1: navigate('/user/:id', {id: 123}, {tab: 'profile'}, {userData: {...}})
+// Method 2: navigate('/user/:id', {params: {...}, queryParams: {...}, props: {...}})
+// Method 3: navigate('/user/:id', {id: 123, userData: {...}}) - automatic detection
+export type NavigateFunctionV2 = (
+  routePattern: string, 
+  paramsOrConfig?: RouteParams | NavigateConfig | (RouteParams & AdditionalProps), 
+  queryParams?: QueryParams, 
+  additionalProps?: AdditionalProps
+) => void;
 
-// Тип для объекта конфигурации navigate
+// Тип для объекта конфигурации navigate (Method 2)
+// navigate('/user/:id', {params: {id: 123}, queryParams: {tab: 'profile'}, props: {userData: {...}}})
 export interface NavigateConfig {
   params?: RouteParams;
   queryParams?: QueryParams;
   props?: AdditionalProps;
 }
 
-// Тип для автоматического navigate
+// Тип для автоматического navigate (Method 3)
+// navigate('/user/:id', {id: 123, userData: {...}}) - automatic detection
 export type NavigateAuto = (routePattern: string, data: RouteParams & AdditionalProps, queryParams?: QueryParams) => void;
 
 // Тип для LinkTo props
+// <LinkTo route="/user/:id" params={{id: 123}} queryParams={{tab: 'profile'}} props={{userData: {...}}} />
+// route может быть с регулярками или без: '/user/:id' или '/user/:id(\\d+)' - результат одинаковый
 export interface LinkToProps {
   route: string;
   params?: RouteParams;
@@ -64,6 +76,11 @@ export interface RouterViewProps {
   currentComponent?: CurrentComponent;
 }
 
+// Тип для linkTo функции
+// linkTo('/user/:id', {id: 123}, {tab: 'profile'}) -> '/user/123?tab=profile'
+// route может быть с регулярками или без: '/user/:id' или '/user/:id(\\d+)' - результат одинаковый
+export type LinkToFunction = (routePattern: string, params?: RouteParams, queryParams?: QueryParams) => string;
+
 // Экспорт основных типов
 export type {
   Routes,
@@ -76,6 +93,7 @@ export type {
   NavigateConfig,
   NavigateAuto,
   LinkToProps,
+  LinkToFunction,
   RouterViewProps,
   UrlData
 };

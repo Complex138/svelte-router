@@ -40,9 +40,12 @@ export const routes = {
          <nav>
            <LinkTo route="/" className="nav-link">Home</LinkTo>
            <LinkTo route="/user/:id" params={{id: 123}} className="nav-link">User 123</LinkTo>
-           <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456</LinkTo>
-           <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John</LinkTo>
-           <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789</LinkTo>
+           <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456 (with regex)</LinkTo>
+           <LinkTo route="/user/id/:id" params={{id: 456}} className="nav-link">User ID 456 (without regex)</LinkTo>
+           <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John (with regex)</LinkTo>
+           <LinkTo route="/user/name/:userName" params={{userName: "john"}} className="nav-link">User John (without regex)</LinkTo>
+           <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789 (with regex)</LinkTo>
+           <LinkTo route="/post/:id/:action" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789 (without regex)</LinkTo>
          </nav>
   
   <RouterView currentComponent={$currentComponent} />
@@ -81,25 +84,44 @@ navigate('/user/:id', {
   userData: {name: 'John'}   // Goes to props
 });
 
-// All methods work with regular expressions
-navigate('/user/id/:id(\\d+)', {id: 123}); // Method 1
+// All methods work with regular expressions (with or without regex in navigate - same result!)
+navigate('/user/id/:id(\\d+)', {id: 123}); // Method 1 - with regex
+navigate('/user/id/:id', {id: 123}); // Method 1 - without regex (same result!)
+
 navigate('/user/name/:userName([a-zA-Z]+)', {
   params: {userName: 'john'},
   props: {userData: {name: 'John'}}
-}); // Method 2
+}); // Method 2 - with regex
+navigate('/user/name/:userName', {
+  params: {userName: 'john'},
+  props: {userData: {name: 'John'}}
+}); // Method 2 - without regex (same result!)
+
 navigate('/post/:id(\\d+)/:action(edit|delete)', {
   id: 789,                    // Goes to params
   action: 'edit',             // Goes to params
   postData: {title: 'Test'}   // Goes to props
-}); // Method 3
+}); // Method 3 - with regex
+navigate('/post/:id/:action', {
+  id: 789,                    // Goes to params
+  action: 'edit',             // Goes to params
+  postData: {title: 'Test'}   // Goes to props
+}); // Method 3 - without regex (same result!)
 
 // URL generation only
 const url = linkTo('/user/:id', {id: 456}, {tab: 'profile'});
 // Result: '/user/456?tab=profile'
 
-// Regular expression routes
-navigate('/user/id/:id(\\d+)', {id: 123}); // Only numbers
-navigate('/user/name/:userName([a-zA-Z]+)', {userName: 'john'}); // Only letters
-navigate('/post/:id(\\d+)/:action(edit|delete)', {id: 789, action: 'edit'}); // Specific values
-navigate('/api/:version(v\\d+)/:endpoint(users|posts|comments)', {version: 'v1', endpoint: 'users'}); // API routes
+// Regular expression routes (with or without regex in navigate - same result!)
+navigate('/user/id/:id(\\d+)', {id: 123}); // With regex - only numbers
+navigate('/user/id/:id', {id: 123}); // Without regex (same result!)
+
+navigate('/user/name/:userName([a-zA-Z]+)', {userName: 'john'}); // With regex - only letters
+navigate('/user/name/:userName', {userName: 'john'}); // Without regex (same result!)
+
+navigate('/post/:id(\\d+)/:action(edit|delete)', {id: 789, action: 'edit'}); // With regex - specific values
+navigate('/post/:id/:action', {id: 789, action: 'edit'}); // Without regex (same result!)
+
+navigate('/api/:version(v\\d+)/:endpoint(users|posts|comments)', {version: 'v1', endpoint: 'users'}); // With regex - API routes
+navigate('/api/:version/:endpoint', {version: 'v1', endpoint: 'users'}); // Without regex (same result!)
 */

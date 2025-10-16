@@ -24,7 +24,7 @@ npm install svelte-router-v5
 This package includes full TypeScript support with type definitions:
 
 ```typescript
-import { createNavigation, LinkTo, getRoutParams, type Routes, type RouteParams } from 'svelte-router-v5';
+import { createNavigation, LinkTo, getRoutParams, navigate, linkTo, type Routes, type RouteParams, type NavigateFunctionV2, type LinkToFunction } from 'svelte-router-v5';
 
 // Typed routes
 const routes: Routes = {
@@ -39,6 +39,19 @@ const routes: Routes = {
 
 // Typed parameters
 const { id: userId, userName, action, version, endpoint, tab }: RouteParams & { tab?: string } = $getRoutParams;
+
+// Typed navigation functions
+const navigateTyped: NavigateFunctionV2 = navigate;
+const linkToTyped: LinkToFunction = linkTo;
+
+// All three methods work with TypeScript
+navigateTyped('/user/:id', {id: 123}); // Method 1
+navigateTyped('/user/:id', {params: {id: 123}, queryParams: {tab: 'profile'}}); // Method 2
+navigateTyped('/user/:id', {id: 123, userData: {name: 'John'}}); // Method 3
+
+// With or without regex - same result!
+navigateTyped('/user/id/:id(\\d+)', {id: 123}); // With regex
+navigateTyped('/user/id/:id', {id: 123}); // Without regex (same result!)
 ```
 
 ## Quick Start
@@ -88,9 +101,12 @@ export const routes = {
   <nav>
     <LinkTo route="/" className="nav-link">Home</LinkTo>
     <LinkTo route="/user/:id" params={{id: 123}} className="nav-link">User 123</LinkTo>
-    <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456</LinkTo>
-    <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John</LinkTo>
-    <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789</LinkTo>
+    <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456 (with regex)</LinkTo>
+    <LinkTo route="/user/id/:id" params={{id: 456}} className="nav-link">User ID 456 (without regex)</LinkTo>
+    <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John (with regex)</LinkTo>
+    <LinkTo route="/user/name/:userName" params={{userName: "john"}} className="nav-link">User John (without regex)</LinkTo>
+    <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789 (with regex)</LinkTo>
+    <LinkTo route="/post/:id/:action" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789 (without regex)</LinkTo>
   </nav>
   
   <RouterView currentComponent={$currentComponent} />
@@ -111,9 +127,12 @@ export const routes = {
   <nav>
     <LinkTo route="/" className="nav-link">Home</LinkTo>
     <LinkTo route="/user/:id" params={{id: 123}} className="nav-link">User 123</LinkTo>
-    <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456</LinkTo>
-    <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John</LinkTo>
-    <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789</LinkTo>
+    <LinkTo route="/user/id/:id(\\d+)" params={{id: 456}} className="nav-link">User ID 456 (with regex)</LinkTo>
+    <LinkTo route="/user/id/:id" params={{id: 456}} className="nav-link">User ID 456 (without regex)</LinkTo>
+    <LinkTo route="/user/name/:userName([a-zA-Z]+)" params={{userName: "john"}} className="nav-link">User John (with regex)</LinkTo>
+    <LinkTo route="/user/name/:userName" params={{userName: "john"}} className="nav-link">User John (without regex)</LinkTo>
+    <LinkTo route="/post/:id(\\d+)/:action(edit|delete)" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789 (with regex)</LinkTo>
+    <LinkTo route="/post/:id/:action" params={{id: 789, action: "edit"}} className="nav-link">Edit Post 789 (without regex)</LinkTo>
   </nav>
   
   <RouterView currentComponent={$currentComponent} />
@@ -340,16 +359,28 @@ navigate('/user/:id', {
 // Result: id=123 -> params, everything else -> props
 
 // Regular expression routes with all methods
-navigate('/user/id/:id(\\d+)', {id: 123}); // Method 1
+navigate('/user/id/:id(\\d+)', {id: 123}); // Method 1 - with regex
+navigate('/user/id/:id', {id: 123}); // Method 1 - without regex (same result!)
+
 navigate('/user/name/:userName([a-zA-Z]+)', {
   params: {userName: 'john'},
   props: {userData: {name: 'John'}}
-}); // Method 2
+}); // Method 2 - with regex
+navigate('/user/name/:userName', {
+  params: {userName: 'john'},
+  props: {userData: {name: 'John'}}
+}); // Method 2 - without regex (same result!)
+
 navigate('/post/:id(\\d+)/:action(edit|delete)', {
   id: 789,                    // Goes to params
   action: 'edit',             // Goes to params
   postData: {title: 'Test'}   // Goes to props
-}); // Method 3
+}); // Method 3 - with regex
+navigate('/post/:id/:action', {
+  id: 789,                    // Goes to params
+  action: 'edit',             // Goes to params
+  postData: {title: 'Test'}   // Goes to props
+}); // Method 3 - without regex (same result!)
 
 // Use in functions
 function goToUser(userId, tab = 'profile') {
@@ -659,9 +690,11 @@ navigate('/user/:id', {id: 123}); // Navigate to /user/123
 navigate('/user/:id', {id: 123}, {tab: 'profile'}); // With query params
 navigate('/user/:id', {id: 123}, {}, {userData: {...}}); // With props
 
-// Regular expression routes
-navigate('/user/id/:id(\\d+)', {id: 123}); // Only numbers
-navigate('/post/:id(\\d+)/:action(edit|delete)', {id: 789, action: 'edit'}); // Specific values
+// Regular expression routes (with or without regex in navigate - same result!)
+navigate('/user/id/:id(\\d+)', {id: 123}); // With regex
+navigate('/user/id/:id', {id: 123}); // Without regex (same result!)
+navigate('/post/:id(\\d+)/:action(edit|delete)', {id: 789, action: 'edit'}); // With regex
+navigate('/post/:id/:action', {id: 789, action: 'edit'}); // Without regex (same result!)
 ```
 
 **Method 2: New format with keys (recommended)**
@@ -672,11 +705,15 @@ navigate('/user/:id', {
   props: {userData: {...}}
 });
 
-// Regular expression routes
+// Regular expression routes (with or without regex in navigate - same result!)
 navigate('/user/name/:userName([a-zA-Z]+)', {
   params: {userName: 'john'},
   props: {userData: {name: 'John'}}
-});
+}); // With regex
+navigate('/user/name/:userName', {
+  params: {userName: 'john'},
+  props: {userData: {name: 'John'}}
+}); // Without regex (same result!)
 ```
 
 **Method 3: Automatic detection (smart mode)**
@@ -687,12 +724,17 @@ navigate('/user/:id', {
   settings: { theme: 'dark' } // Automatically goes to props
 });
 
-// Regular expression routes
+// Regular expression routes (with or without regex in navigate - same result!)
 navigate('/post/:id(\\d+)/:action(edit|delete)', {
   id: 789,                    // Goes to params
   action: 'edit',             // Goes to params
   postData: {title: 'Test'}   // Goes to props
-});
+}); // With regex
+navigate('/post/:id/:action', {
+  id: 789,                    // Goes to params
+  action: 'edit',             // Goes to params
+  postData: {title: 'Test'}   // Goes to props
+}); // Without regex (same result!)
 ```
 
 ### `linkTo(route, params, queryParams)`
@@ -774,6 +816,30 @@ Routes with regular expressions are checked **before** basic routes to ensure pr
 2. **General routes** (e.g., `/user/:id`)
 
 This ensures that `/user/123` matches the regex route (if it exists) before falling back to the general route.
+
+### Using Routes in navigate() and linkTo()
+
+**Important:** You can use route patterns with or without regular expressions in `navigate()` and `linkTo()` - both work the same way!
+
+```javascript
+// These are equivalent - both generate the same URL: /user/id/123
+navigate('/user/id/:id(\\d+)', {id: 123}); // With regex
+navigate('/user/id/:id', {id: 123});       // Without regex
+
+// These are equivalent - both generate the same URL: /user/name/john
+navigate('/user/name/:userName([a-zA-Z]+)', {userName: 'john'}); // With regex
+navigate('/user/name/:userName', {userName: 'john'});            // Without regex
+
+// These are equivalent - both generate the same URL: /post/789/edit
+navigate('/post/:id(\\d+)/:action(edit|delete)', {id: 789, action: 'edit'}); // With regex
+navigate('/post/:id/:action', {id: 789, action: 'edit'});                    // Without regex
+```
+
+**How it works:**
+- Regular expressions in routes are used for **validation only**
+- `navigate()` and `linkTo()` strip regex patterns when generating URLs
+- The router validates parameters against route regex patterns during navigation
+- Invalid parameters (e.g., letters in `:id(\\d+)`) will prevent navigation
 
 ## License
 
