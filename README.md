@@ -8,6 +8,7 @@ Simple and powerful router for Svelte 5 with automatic parameter extraction, rea
 - 🔄 **Reactive navigation** with Svelte stores
 - 🎯 **Regular expression support** for advanced route validation
 - 🔐 **Middleware system** for authentication, authorization, and route guards
+- ⚡ **Lazy loading** - Load components on-demand for better performance
 - 📦 **Type-safe** parameter passing
 - 🎯 **Support for objects and components** in props
 - 🔗 **Clean API** with `LinkTo` component
@@ -866,6 +867,372 @@ export const routes = {
 3. **beforeEnter/afterEnter** - Route-specific hooks
 
 For complete middleware documentation, see [MIDDLEWARE.md](./MIDDLEWARE.md).
+
+## Lazy Loading ⚡
+
+The router supports lazy loading of components to improve initial load times and reduce bundle size. Components are loaded on-demand when navigating to a route.
+
+### Why Use Lazy Loading?
+
+- **Faster initial load** - Only load components needed for the current route
+- **Smaller bundle size** - Split code into smaller chunks
+- **Better performance** - Reduce memory usage and parsing time
+- **Improved UX** - Users don't wait for unused components to load
+
+### Basic Lazy Loading
+
+**Without lazy loading (loads all components immediately):**
+```javascript
+// routes.js
+import Home from './pages/Home.svelte';
+import About from './pages/About.svelte';
+import User from './pages/User.svelte';
+
+export const routes = {
+  '/': Home,
+  '/about': About,
+  '/user/:id': User
+};
+```
+
+**With lazy loading (loads components on-demand):**
+```javascript
+// routes.js
+export const routes = {
+  '/': () => import('./pages/Home.svelte'),
+  '/about': () => import('./pages/About.svelte'),
+  '/user/:id': () => import('./pages/User.svelte'),
+  '*': () => import('./pages/NotFound.svelte')
+};
+```
+
+### Using Lazy Utilities
+
+The router provides helper functions for cleaner lazy loading syntax:
+
+```javascript
+// routes.js
+import { lazy, lazyRoute, lazyGroup } from 'svelte-router-v5';
+
+// Method 1: Using lazy() helper (recommended for simple routes)
+export const routes = {
+  '/': lazy(() => import('./pages/Home.svelte')),
+  '/about': lazy(() => import('./pages/About.svelte')),
+  '/user/:id': lazy(() => import('./pages/User.svelte'))
+};
+
+// Method 2: Using lazyRoute() with middleware
+export const routes = {
+  '/': lazy(() => import('./pages/Home.svelte')),
+  '/profile': lazyRoute(() => import('./pages/Profile.svelte'), {
+    middleware: ['auth'],
+    beforeEnter: (context) => {
+      console.log('Entering profile');
+      return true;
+    }
+  }),
+  '/admin': lazyRoute(() => import('./pages/Admin.svelte'), {
+    middleware: ['auth', 'admin']
+  })
+};
+
+// Method 3: Using lazyGroup() for grouped routes
+const adminRoutes = lazyGroup({
+  '/admin': () => import('./pages/admin/Dashboard.svelte'),
+  '/admin/users': () => import('./pages/admin/Users.svelte'),
+  '/admin/settings': () => import('./pages/admin/Settings.svelte')
+}, {
+  middleware: ['auth', 'admin'] // Shared middleware for all admin routes
+});
+
+export const routes = {
+  '/': lazy(() => import('./pages/Home.svelte')),
+  '/about': lazy(() => import('./pages/About.svelte')),
+  ...adminRoutes,
+  '*': lazy(() => import('./pages/NotFound.svelte'))
+};
+```
+
+### Loading and Error States
+
+The `RouterView` component automatically handles loading and error states:
+
+```javascript
+// App.svelte
+<script>
+  import { createNavigation, RouterView } from 'svelte-router-v5';
+  import { routes } from './routes.js';
+
+  const currentComponent = createNavigation(routes);
+</script>
+
+<main>
+  <nav>
+    <!-- Your navigation links -->
+  </nav>
+
+  <!-- RouterView shows loading/error states automatically -->
+  <RouterView currentComponent={$currentComponent} />
+</main>
+```
+
+**Default loading and error UI:**
+- Loading: Shows "Loading..." message
+- Error: Shows error message in red
+
+### Custom Loading and Error Components
+
+You can provide custom components for loading and error states:
+
+```javascript
+// App.svelte
+<script>
+  import { createNavigation, RouterView } from 'svelte-router-v5';
+  import { routes } from './routes.js';
+  import LoadingSpinner from './components/LoadingSpinner.svelte';
+  import ErrorPage from './components/ErrorPage.svelte';
+
+  const currentComponent = createNavigation(routes);
+</script>
+
+<main>
+  <RouterView
+    currentComponent={$currentComponent}
+    loadingComponent={LoadingSpinner}
+    errorComponent={ErrorPage}
+  />
+</main>
+```
+
+**LoadingSpinner.svelte:**
+```svelte
+<div class="loading-spinner">
+  <div class="spinner"></div>
+  <p>Loading page...</p>
+</div>
+
+<style>
+  .loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+  }
+
+  .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+```
+
+**ErrorPage.svelte:**
+```svelte
+<script>
+  export let error = 'An error occurred';
+</script>
+
+<div class="error-page">
+  <h1>Oops! Something went wrong</h1>
+  <p class="error-message">{error}</p>
+  <button on:click={() => window.location.reload()}>
+    Reload Page
+  </button>
+</div>
+
+<style>
+  .error-page {
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .error-message {
+    color: #d32f2f;
+    margin: 1rem 0;
+  }
+
+  button {
+    padding: 0.5rem 1rem;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+</style>
+```
+
+### Preloading Components
+
+You can preload components before navigation for instant transitions:
+
+```javascript
+// Navigation.svelte
+<script>
+  import { LinkTo, preload } from 'svelte-router-v5';
+
+  // Preload on hover for instant navigation
+  function handleMouseEnter() {
+    preload(() => import('./pages/User.svelte'));
+  }
+</script>
+
+<nav>
+  <LinkTo
+    route="/user/:id"
+    params={{id: 123}}
+    on:mouseenter={handleMouseEnter}
+  >
+    User Profile
+  </LinkTo>
+</nav>
+```
+
+### Mixing Regular and Lazy Routes
+
+You can mix regular imports and lazy loading in the same routes configuration:
+
+```javascript
+// routes.js
+import Home from './pages/Home.svelte'; // Regular import
+import { lazy } from 'svelte-router-v5';
+
+export const routes = {
+  '/': Home, // Loaded immediately (good for landing page)
+  '/about': lazy(() => import('./pages/About.svelte')), // Lazy loaded
+  '/user/:id': lazy(() => import('./pages/User.svelte')), // Lazy loaded
+  '/settings': lazy(() => import('./pages/Settings.svelte')) // Lazy loaded
+};
+```
+
+### TypeScript Support
+
+Full TypeScript support for lazy loading:
+
+```typescript
+import { lazy, lazyRoute, type Routes, type LazyComponent } from 'svelte-router-v5';
+
+// Typed lazy routes
+const routes: Routes = {
+  '/': lazy(() => import('./pages/Home.svelte')),
+  '/about': lazy(() => import('./pages/About.svelte')),
+  '/user/:id': lazy(() => import('./pages/User.svelte'))
+};
+
+// Typed lazy component
+const lazyComponent: LazyComponent = () => import('./pages/Profile.svelte');
+```
+
+### Best Practices for Lazy Loading
+
+1. **Lazy load heavy components** - Dashboard, admin panels, reports
+2. **Keep critical pages immediate** - Home page, login page
+3. **Group related routes** - Use `lazyGroup()` for related pages
+4. **Preload on hover** - Use `preload()` for better UX
+5. **Custom loading states** - Provide branded loading components
+6. **Handle errors gracefully** - Show helpful error messages
+
+### Performance Tips
+
+```javascript
+// ❌ BAD: Lazy loading tiny components
+export const routes = {
+  '/': lazy(() => import('./pages/Home.svelte')), // 2KB - too small
+  '/about': lazy(() => import('./pages/About.svelte')) // 1KB - too small
+};
+
+// ✅ GOOD: Lazy load heavy components only
+import Home from './pages/Home.svelte'; // Small, load immediately
+import About from './pages/About.svelte'; // Small, load immediately
+
+export const routes = {
+  '/': Home,
+  '/about': About,
+  '/dashboard': lazy(() => import('./pages/Dashboard.svelte')), // 50KB - good candidate
+  '/reports': lazy(() => import('./pages/Reports.svelte')), // 100KB - good candidate
+  '/admin': lazy(() => import('./pages/Admin.svelte')) // 75KB - good candidate
+};
+```
+
+### Example: Complete Lazy Loading Setup
+
+```javascript
+// routes.js
+import { lazy, lazyRoute, lazyGroup } from 'svelte-router-v5';
+import Home from './pages/Home.svelte'; // Critical page - load immediately
+
+// Public routes
+const publicRoutes = {
+  '/': Home,
+  '/about': lazy(() => import('./pages/About.svelte')),
+  '/contact': lazy(() => import('./pages/Contact.svelte'))
+};
+
+// Protected routes with middleware
+const protectedRoutes = {
+  '/profile': lazyRoute(() => import('./pages/Profile.svelte'), {
+    middleware: ['auth']
+  }),
+  '/settings': lazyRoute(() => import('./pages/Settings.svelte'), {
+    middleware: ['auth']
+  })
+};
+
+// Admin routes (heavy components)
+const adminRoutes = lazyGroup({
+  '/admin': () => import('./pages/admin/Dashboard.svelte'),
+  '/admin/users': () => import('./pages/admin/Users.svelte'),
+  '/admin/reports': () => import('./pages/admin/Reports.svelte'),
+  '/admin/settings': () => import('./pages/admin/Settings.svelte')
+}, {
+  middleware: ['auth', 'admin']
+});
+
+// Combine all routes
+export const routes = {
+  ...publicRoutes,
+  ...protectedRoutes,
+  ...adminRoutes,
+  '*': lazy(() => import('./pages/NotFound.svelte'))
+};
+```
+
+```javascript
+// App.svelte
+<script>
+  import { createNavigation, RouterView, LinkTo } from 'svelte-router-v5';
+  import { routes } from './routes.js';
+  import LoadingSpinner from './components/LoadingSpinner.svelte';
+  import ErrorPage from './components/ErrorPage.svelte';
+
+  const currentComponent = createNavigation(routes);
+</script>
+
+<main>
+  <nav>
+    <LinkTo route="/">Home</LinkTo>
+    <LinkTo route="/about">About</LinkTo>
+    <LinkTo route="/profile">Profile</LinkTo>
+    <LinkTo route="/admin">Admin</LinkTo>
+  </nav>
+
+  <RouterView
+    currentComponent={$currentComponent}
+    loadingComponent={LoadingSpinner}
+    errorComponent={ErrorPage}
+  />
+</main>
+```
 
 ## License
 

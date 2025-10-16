@@ -2,9 +2,14 @@
 import type { ComponentType, SvelteComponent } from 'svelte';
 import type { Readable, Writable } from 'svelte/store';
 
-// Тип для маршрутов
+// ===== LAZY LOADING TYPES =====
+
+// Тип для lazy-загружаемого компонента
+export type LazyComponent = () => Promise<{ default: ComponentType<SvelteComponent> } | ComponentType<SvelteComponent>>;
+
+// Тип для маршрутов с поддержкой lazy loading
 export interface Routes {
-  [route: string]: ComponentType<SvelteComponent>;
+  [route: string]: ComponentType<SvelteComponent> | LazyComponent;
 }
 
 // Тип для параметров маршрута
@@ -22,10 +27,12 @@ export interface AdditionalProps {
   [key: string]: any;
 }
 
-// Тип для текущего компонента
+// Тип для текущего компонента с поддержкой lazy loading
 export interface CurrentComponent {
-  component: ComponentType<SvelteComponent>;
+  component: ComponentType<SvelteComponent> | null;
   props: RouteParams & QueryParams & AdditionalProps;
+  loading?: boolean;
+  error?: string | null;
 }
 
 // Тип для функции навигации (старая версия)
@@ -71,9 +78,11 @@ export interface UrlData {
   search: string;
 }
 
-// Тип для RouterView props
+// Тип для RouterView props с поддержкой lazy loading
 export interface RouterViewProps {
   currentComponent?: CurrentComponent;
+  loadingComponent?: ComponentType<SvelteComponent>;
+  errorComponent?: ComponentType<SvelteComponent>;
 }
 
 // Тип для linkTo функции
@@ -109,17 +118,17 @@ export interface MiddlewareConfig {
 // Тип для middleware в роуте (строка или объект)
 export type RouteMiddleware = string | MiddlewareConfig;
 
-// Конфигурация роута с middleware
+// Конфигурация роута с middleware и lazy loading
 export interface RouteConfig {
-  component: ComponentType<SvelteComponent>;
+  component: ComponentType<SvelteComponent> | LazyComponent;
   middleware?: RouteMiddleware[];
   beforeEnter?: MiddlewareFunction;
   afterEnter?: MiddlewareFunction;
 }
 
-// Обновленный тип Routes с поддержкой middleware
+// Обновленный тип Routes с поддержкой middleware и lazy loading
 export interface RoutesWithMiddleware {
-  [route: string]: ComponentType<SvelteComponent> | RouteConfig;
+  [route: string]: ComponentType<SvelteComponent> | LazyComponent | RouteConfig;
 }
 
 // Реестр middleware
@@ -133,6 +142,29 @@ export interface GlobalMiddleware {
   after?: MiddlewareFunction[];
   error?: ErrorMiddlewareFunction[];
 }
+
+// ===== LAZY LOADING UTILITY FUNCTIONS =====
+
+// Функция для создания lazy компонента
+export type LazyFunction = (importFn: LazyComponent) => LazyComponent;
+
+// Функция для создания lazy роута с конфигурацией
+export type LazyRouteFunction = (importFn: LazyComponent, config?: Omit<RouteConfig, 'component'>) => RouteConfig;
+
+// Функция для предзагрузки компонента
+export type PreloadFunction = (importFn: LazyComponent) => Promise<ComponentType<SvelteComponent>>;
+
+// Функция для создания группы lazy роутов
+export type LazyGroupFunction = (
+  routes: { [path: string]: LazyComponent },
+  sharedConfig?: Omit<RouteConfig, 'component'>
+) => { [path: string]: RouteConfig };
+
+// Функция для проверки, является ли компонент lazy
+export type IsLazyComponentFunction = (routeValue: any) => boolean;
+
+// Функция для загрузки lazy компонента
+export type LoadLazyComponentFunction = (routeValue: any) => Promise<ComponentType<SvelteComponent>>;
 
 // Экспорт основных типов (убираем дублирующие экспорты)
 // Все типы уже экспортированы выше как interface/type

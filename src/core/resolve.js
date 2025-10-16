@@ -13,6 +13,29 @@ export function getRouteComponentFromConfig(routeValue) {
   return routeValue;
 }
 
+// Проверяет, является ли значение lazy-загружаемым компонентом (функция, возвращающая Promise)
+export function isLazyComponent(routeValue) {
+  const component = isRouteConfig(routeValue) ? routeValue.component : routeValue;
+  return typeof component === 'function' && !component.prototype;
+}
+
+// Асинхронная загрузка компонента
+export async function loadLazyComponent(routeValue) {
+  const component = isRouteConfig(routeValue) ? routeValue.component : routeValue;
+
+  if (typeof component === 'function' && !component.prototype) {
+    try {
+      const module = await component();
+      return module.default || module;
+    } catch (error) {
+      console.error('Failed to load lazy component:', error);
+      throw error;
+    }
+  }
+
+  return component;
+}
+
 export function getRouteComponent(path) {
   const routes = getRoutes();
   if (routes[path]) {

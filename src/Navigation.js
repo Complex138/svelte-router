@@ -1,12 +1,12 @@
 // Логика навигации
-import { 
-  routeExists, 
-  getRouteComponent, 
-  getRouteParams, 
-  getQueryParams, 
-  getAllParams, 
-  updateUrlStore, 
-  updateAdditionalProps, 
+import {
+  routeExists,
+  getRouteComponent,
+  getRouteParams,
+  getQueryParams,
+  getAllParams,
+  updateUrlStore,
+  updateAdditionalProps,
   setRoutes,
   getRouteMiddlewareByPath,
   getRouteBeforeEnterByPath,
@@ -16,6 +16,9 @@ import {
   executeGlobalMiddleware,
   createMiddlewareContext
 } from './Router.js';
+import { isLazyComponent, loadLazyComponent } from './core/resolve.js';
+import { getRoutes } from './core/routes-store.js';
+import { matchRoute } from './core/route-pattern.js';
 import { setContext } from 'svelte';
 import { writable } from 'svelte/store';
 
@@ -24,16 +27,65 @@ export function createNavigation(routesConfig = {}) {
   // Устанавливаем routes
   setRoutes(routesConfig);
   let currentPath = window.location.pathname;
-  
-  // Создаем реактивный store с компонентом и props
+
+  // Создаем реактивный store с компонентом, props и состоянием загрузки
   const currentComponent = writable({
-    component: getRouteComponent(currentPath),
+    component: null,
     props: {
       routeParams: getRouteParams(currentPath),
       queryParams: getQueryParams(),
       allParams: getAllParams(currentPath)
-    }
+    },
+    loading: true,
+    error: null
   });
+
+  // Асинхронная функция для загрузки начального компонента
+  async function loadInitialComponent() {
+    try {
+      const routes = getRoutes();
+      const routeValue = routes[currentPath] || Object.entries(routes).find(([pattern]) => {
+        if (pattern === '*') return false;
+        return matchRoute(pattern, currentPath);
+      })?.[1] || routes['*'];
+
+      if (isLazyComponent(routeValue)) {
+        const component = await loadLazyComponent(routeValue);
+        currentComponent.set({
+          component,
+          props: {
+            routeParams: getRouteParams(currentPath),
+            queryParams: getQueryParams(),
+            allParams: getAllParams(currentPath)
+          },
+          loading: false,
+          error: null
+        });
+      } else {
+        currentComponent.set({
+          component: getRouteComponent(currentPath),
+          props: {
+            routeParams: getRouteParams(currentPath),
+            queryParams: getQueryParams(),
+            allParams: getAllParams(currentPath)
+          },
+          loading: false,
+          error: null
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load initial component:', error);
+      currentComponent.set({
+        component: null,
+        props: {},
+        loading: false,
+        error: error.message || 'Failed to load component'
+      });
+    }
+  }
+
+  // Загружаем начальный компонент
+  loadInitialComponent();
 
   // Функция навигации с поддержкой middleware
   async function navigate(fullPath, additionalProps = {}) {
@@ -95,21 +147,55 @@ export function createNavigation(routesConfig = {}) {
       // 5. Если все middleware прошли успешно, выполняем навигацию
       currentPath = toPath;
       window.history.pushState({}, '', fullPath);
-      
+
       // Обновляем дополнительные props
       updateAdditionalProps(additionalProps);
-      
-      // Обновляем store с новыми props
-      currentComponent.set({
-        component: getRouteComponent(currentPath),
-        props: {
-          routeParams: getRouteParams(currentPath),
-          queryParams: getQueryParams(),
-          allParams: getAllParams(currentPath),
-          ...additionalProps // Добавляем дополнительные props
+
+      // Устанавливаем состояние загрузки
+      currentComponent.update(state => ({
+        ...state,
+        loading: true,
+        error: null
+      }));
+
+      // Получаем роут и загружаем компонент
+      try {
+        const routes = getRoutes();
+        const routeValue = routes[toPath] || Object.entries(routes).find(([pattern]) => {
+          if (pattern === '*') return false;
+          return matchRoute(pattern, toPath);
+        })?.[1] || routes['*'];
+
+        let component;
+        if (isLazyComponent(routeValue)) {
+          component = await loadLazyComponent(routeValue);
+        } else {
+          component = getRouteComponent(currentPath);
         }
-      });
-      
+
+        // Обновляем store с новыми props и загруженным компонентом
+        currentComponent.set({
+          component,
+          props: {
+            routeParams: getRouteParams(currentPath),
+            queryParams: getQueryParams(),
+            allParams: getAllParams(currentPath),
+            ...additionalProps // Добавляем дополнительные props
+          },
+          loading: false,
+          error: null
+        });
+      } catch (error) {
+        console.error('Failed to load component:', error);
+        currentComponent.set({
+          component: null,
+          props: {},
+          loading: false,
+          error: error.message || 'Failed to load component'
+        });
+        return;
+      }
+
       // Обновляем URL store
       updateUrlStore();
 
@@ -196,15 +282,50 @@ export function createNavigation(routesConfig = {}) {
 
       // Если все middleware прошли успешно, выполняем навигацию
       currentPath = toPath;
-      currentComponent.set({
-        component: getRouteComponent(currentPath),
-        props: {
-          routeParams: getRouteParams(currentPath),
-          queryParams: getQueryParams(),
-          allParams: getAllParams(currentPath)
+
+      // Устанавливаем состояние загрузки
+      currentComponent.update(state => ({
+        ...state,
+        loading: true,
+        error: null
+      }));
+
+      // Получаем роут и загружаем компонент
+      try {
+        const routes = getRoutes();
+        const routeValue = routes[toPath] || Object.entries(routes).find(([pattern]) => {
+          if (pattern === '*') return false;
+          return matchRoute(pattern, toPath);
+        })?.[1] || routes['*'];
+
+        let component;
+        if (isLazyComponent(routeValue)) {
+          component = await loadLazyComponent(routeValue);
+        } else {
+          component = getRouteComponent(currentPath);
         }
-      });
-      
+
+        currentComponent.set({
+          component,
+          props: {
+            routeParams: getRouteParams(currentPath),
+            queryParams: getQueryParams(),
+            allParams: getAllParams(currentPath)
+          },
+          loading: false,
+          error: null
+        });
+      } catch (error) {
+        console.error('Failed to load component on popstate:', error);
+        currentComponent.set({
+          component: null,
+          props: {},
+          loading: false,
+          error: error.message || 'Failed to load component'
+        });
+        return;
+      }
+
       // Обновляем URL store
       updateUrlStore();
 
