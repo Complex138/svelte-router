@@ -108,5 +108,12 @@ export {
   initHashRouting
 } from './core/hash-utils.js';
 
+// Route validation utilities
+export {
+  RouteValidator,
+  createRouteValidator,
+  validateRoutes
+} from './core/route-validator.js';
+
 // Экспорт типов для TypeScript
 export * from './types.d.ts';

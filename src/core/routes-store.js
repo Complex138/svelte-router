@@ -1,6 +1,7 @@
 // Хранилище конфигурации роутов (простая переменная-модуль)
 
 import { createRouteWithLayout, extractGlobalSettings } from './layout-utils.js';
+import { validateRoutes } from './route-validator.js';
 
 let routes = {};
 let globalSettings = {};
@@ -137,11 +138,31 @@ function flattenRoutesTree(node, accMeta, out, globalSettings = {}) {
   }
 }
 
-export function setRoutes(routesConfig) {
+export function setRoutes(routesConfig, options = {}) {
   // Если нет групп — оставляем как было
   if (!routesConfig || typeof routesConfig !== 'object') {
     routes = routesConfig || {};
     return;
+  }
+
+  // Валидируем роуты перед установкой
+  if (options.validate !== false) {
+    const validation = validateRoutes(routesConfig, options.validator);
+    
+    if (!validation.isValid) {
+      console.error('🚨 Route validation failed:', validation.conflicts);
+      if (options.strict) {
+        throw new Error(`Route validation failed: ${validation.conflicts.map(c => c.message).join(', ')}`);
+      }
+    }
+    
+    if (validation.warnings.length > 0) {
+      console.warn('⚠️ Route validation warnings:', validation.warnings);
+    }
+    
+    if (validation.conflicts.length > 0) {
+      console.warn('⚠️ Route validation conflicts (non-strict mode):', validation.conflicts);
+    }
   }
 
   // Извлекаем глобальные настройки

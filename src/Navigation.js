@@ -40,8 +40,8 @@ let globalNavigateFunction = null;
 
 // Создаем объект для управления навигацией
 export function createNavigation(routesConfig = {}, options = {}) {
-  // Устанавливаем routes
-  setRoutes(routesConfig);
+  // Устанавливаем routes с валидацией
+  setRoutes(routesConfig, options);
   
   // Определяем режим навигации
   const useHash = options.hash !== undefined ? options.hash : isHashMode();
