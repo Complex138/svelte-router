@@ -42,17 +42,28 @@ export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, ad
     query = paramsOrConfig.queryParams || {};
     props = paramsOrConfig.props || {};
   } else if (paramsOrConfig && typeof paramsOrConfig === 'object' && !paramsOrConfig.params && !paramsOrConfig.queryParams && !paramsOrConfig.props) {
+    // Auto-detection: пытаемся угадать что params а что props
     const routeParams = extractRouteParams(routePattern);
     params = {};
     props = {};
+    
     for (const [key, value] of Object.entries(paramsOrConfig)) {
       if (routeParams.includes(key)) {
+        // Это параметр роута
         params[key] = value;
+      } else if (typeof value === 'string' && (value.startsWith('http') || value.includes('.'))) {
+        // Строки похожие на URL или файлы - скорее всего query параметры
+        query[key] = value;
       } else {
+        // Остальное - дополнительные props
         props[key] = value;
       }
     }
-    query = queryParams || {};
+    
+    // Добавляем query параметры если они переданы отдельно
+    if (queryParams) {
+      Object.assign(query, queryParams);
+    }
   } else {
     params = paramsOrConfig || {};
     query = queryParams || {};

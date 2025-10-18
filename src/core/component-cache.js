@@ -1,6 +1,7 @@
 // Кеш загруженных компонентов для предотвращения повторной загрузки
 
 const componentCache = new Map();
+const MAX_CACHE_SIZE = 50; // Лимит на размер кеша для предотвращения утечек памяти
 
 /**
  * Получить компонент из кеша
@@ -17,6 +18,11 @@ export function getCachedComponent(routePath) {
  * @param {Component} component - Загруженный компонент
  */
 export function setCachedComponent(routePath, component) {
+  // LRU: если кеш переполнен, удаляем самый старый элемент
+  if (componentCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = componentCache.keys().next().value;
+    componentCache.delete(firstKey);
+  }
   componentCache.set(routePath, component);
 }
 

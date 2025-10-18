@@ -230,6 +230,7 @@ export async function prefetchRelated(routePatterns, options = {}) {
 export function createSmartPrefetch(historyLimit = 10) {
   const navigationHistory = [];
   const patterns = new Map(); // Хранит частоту переходов между роутами
+  const MAX_PATTERNS = 100; // Лимит на количество паттернов для предотвращения утечек памяти
 
   return {
     recordNavigation: (fromRoute, toRoute) => {
@@ -246,6 +247,12 @@ export function createSmartPrefetch(historyLimit = 10) {
       }
       const transitions = patterns.get(key);
       transitions.set(toRoute, (transitions.get(toRoute) || 0) + 1);
+
+      // Предотвращаем утечку памяти - удаляем старые паттерны
+      if (patterns.size > MAX_PATTERNS) {
+        const oldestKey = patterns.keys().next().value;
+        patterns.delete(oldestKey);
+      }
     },
 
     predictNext: (currentRoute) => {

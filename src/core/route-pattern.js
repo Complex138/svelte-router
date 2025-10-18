@@ -83,4 +83,60 @@ export function extractRouteParams(routePattern) {
   return params;
 }
 
+/**
+ * Вычисляет приоритет роута для правильного ранжирования
+ * Более специфичные роуты должны иметь более высокий приоритет
+ * @param {string} routePattern - Паттерн роута
+ * @returns {number} Приоритет (чем больше, тем выше приоритет)
+ */
+export function calculateRoutePriority(routePattern) {
+  let priority = 0;
+  
+  // Базовый приоритет по длине пути (более длинные пути = более специфичные)
+  const pathLength = routePattern.split('/').filter(part => part !== '').length;
+  priority += pathLength * 100;
+  
+  // Бонус за статичные части пути
+  const staticParts = routePattern.split('/').filter(part => 
+    part !== '' && !part.startsWith(':')
+  ).length;
+  priority += staticParts * 50;
+  
+  // Бонус за отсутствие параметров (полностью статичные роуты)
+  if (!routePattern.includes(':')) {
+    priority += 1000;
+  }
+  
+  // Штраф за wildcard роуты
+  if (routePattern === '*') {
+    priority = -1000;
+  }
+  
+  return priority;
+}
+
+/**
+ * Находит лучший роут из списка кандидатов
+ * @param {Array} candidates - Массив объектов {pattern, route}
+ * @param {string} actualPath - Фактический путь
+ * @returns {Object|null} Лучший роут или null
+ */
+export function findBestRoute(candidates, actualPath) {
+  // Фильтруем только подходящие роуты
+  const matchingRoutes = candidates.filter(({ pattern }) => 
+    matchRoute(pattern, actualPath)
+  );
+  
+  if (matchingRoutes.length === 0) {
+    return null;
+  }
+  
+  // Сортируем по приоритету (от большего к меньшему)
+  matchingRoutes.sort((a, b) => 
+    calculateRoutePriority(b.pattern) - calculateRoutePriority(a.pattern)
+  );
+  
+  return matchingRoutes[0];
+}
+
 

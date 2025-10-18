@@ -18,7 +18,7 @@ import {
 } from './Router.js';
 import { isLazyComponent, loadLazyComponent } from './core/resolve.js';
 import { getRoutes } from './core/routes-store.js';
-import { matchRoute } from './core/route-pattern.js';
+import { matchRoute, findBestRoute } from './core/route-pattern.js';
 import { createSmartPrefetch } from './core/prefetch.js';
 import { setContext } from 'svelte';
 import { writable } from 'svelte/store';
@@ -28,6 +28,9 @@ export function createNavigation(routesConfig = {}) {
   // Устанавливаем routes
   setRoutes(routesConfig);
   let currentPath = window.location.pathname;
+  
+  // Добавляем navigationId для предотвращения race conditions
+  let navigationId = 0;
 
   // Создаем экземпляр умного prefetch для отслеживания навигации
   const smartPrefetch = createSmartPrefetch(10);
@@ -48,10 +51,17 @@ export function createNavigation(routesConfig = {}) {
   async function loadInitialComponent() {
     try {
       const routes = getRoutes();
-      const routeValue = routes[currentPath] || Object.entries(routes).find(([pattern]) => {
-        if (pattern === '*') return false;
-        return matchRoute(pattern, currentPath);
-      })?.[1] || routes['*'];
+      
+      // Используем route ranking для правильного выбора роута
+      let routeValue = routes[currentPath];
+      if (!routeValue) {
+        const candidates = Object.entries(routes)
+          .filter(([pattern]) => pattern !== '*')
+          .map(([pattern, route]) => ({ pattern, route }));
+        
+        const bestRoute = findBestRoute(candidates, currentPath);
+        routeValue = bestRoute?.route || routes['*'];
+      }
 
       if (isLazyComponent(routeValue)) {
         const component = await loadLazyComponent(routeValue, currentPath);
@@ -103,6 +113,8 @@ export function createNavigation(routesConfig = {}) {
       return;
     }
 
+    // Увеличиваем navigationId для предотвращения race conditions
+    const thisNavigationId = ++navigationId;
     const fromPath = currentPath;
     const toPath = pathOnly;
     const routeParams = getRouteParams(toPath);
@@ -151,7 +163,6 @@ export function createNavigation(routesConfig = {}) {
       }
 
       // 5. Если все middleware прошли успешно, выполняем навигацию
-      const fromPath = currentPath;
       currentPath = toPath;
       window.history.pushState({}, '', fullPath);
 
@@ -171,16 +182,29 @@ export function createNavigation(routesConfig = {}) {
       // Получаем роут и загружаем компонент
       try {
         const routes = getRoutes();
-        const routeValue = routes[toPath] || Object.entries(routes).find(([pattern]) => {
-          if (pattern === '*') return false;
-          return matchRoute(pattern, toPath);
-        })?.[1] || routes['*'];
+        
+        // Используем route ranking для правильного выбора роута
+        let routeValue = routes[toPath];
+        if (!routeValue) {
+          const candidates = Object.entries(routes)
+            .filter(([pattern]) => pattern !== '*')
+            .map(([pattern, route]) => ({ pattern, route }));
+          
+          const bestRoute = findBestRoute(candidates, toPath);
+          routeValue = bestRoute?.route || routes['*'];
+        }
 
         let component;
         if (isLazyComponent(routeValue)) {
           component = await loadLazyComponent(routeValue, toPath);
         } else {
           component = getRouteComponent(currentPath);
+        }
+
+        // Проверяем что это всё еще актуальная навигация (предотвращаем race conditions)
+        if (thisNavigationId !== navigationId) {
+          console.log('Navigation cancelled - newer navigation started');
+          return;
         }
 
         // Обновляем store с новыми props и загруженным компонентом
@@ -239,7 +263,7 @@ export function createNavigation(routesConfig = {}) {
   }
 
   // Обработка кнопок браузера с поддержкой middleware
-  window.addEventListener('popstate', async () => {
+  const popstateHandler = async () => {
     const newPath = window.location.pathname;
     
     if (!routeExists(newPath)) {
@@ -308,10 +332,17 @@ export function createNavigation(routesConfig = {}) {
       // Получаем роут и загружаем компонент
       try {
         const routes = getRoutes();
-        const routeValue = routes[toPath] || Object.entries(routes).find(([pattern]) => {
-          if (pattern === '*') return false;
-          return matchRoute(pattern, toPath);
-        })?.[1] || routes['*'];
+        
+        // Используем route ranking для правильного выбора роута
+        let routeValue = routes[toPath];
+        if (!routeValue) {
+          const candidates = Object.entries(routes)
+            .filter(([pattern]) => pattern !== '*')
+            .map(([pattern, route]) => ({ pattern, route }));
+          
+          const bestRoute = findBestRoute(candidates, toPath);
+          routeValue = bestRoute?.route || routes['*'];
+        }
 
         let component;
         if (isLazyComponent(routeValue)) {
@@ -354,8 +385,10 @@ export function createNavigation(routesConfig = {}) {
         console.error('Error in error middleware:', errorHandlerError);
       }
     }
-  });
+  };
 
+  // Добавляем popstate listener
+  window.addEventListener('popstate', popstateHandler);
 
   // Передаем функцию navigate через контекст
   setContext('navigate', navigate);
@@ -363,6 +396,11 @@ export function createNavigation(routesConfig = {}) {
   // Передаем smartPrefetch через контекст для использования в LinkTo
   setContext('smartPrefetch', smartPrefetch);
 
-  // Возвращаем store напрямую
-  return currentComponent;
+  // Возвращаем store с cleanup функцией
+  return {
+    ...currentComponent,
+    destroy: () => {
+      window.removeEventListener('popstate', popstateHandler);
+    }
+  };
 }
