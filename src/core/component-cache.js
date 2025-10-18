@@ -9,7 +9,13 @@ const MAX_CACHE_SIZE = 50; // Лимит на размер кеша для пр�
  * @returns {Component|null} Кешированный компонент или null
  */
 export function getCachedComponent(routePath) {
-  return componentCache.get(routePath) || null;
+  const component = componentCache.get(routePath);
+  if (component) {
+    // Перемещаем в конец (обновляем время использования) - настоящий LRU
+    componentCache.delete(routePath);
+    componentCache.set(routePath, component);
+  }
+  return component || null;
 }
 
 /**
@@ -18,12 +24,18 @@ export function getCachedComponent(routePath) {
  * @param {Component} component - Загруженный компонент
  */
 export function setCachedComponent(routePath, component) {
-  // LRU: если кеш переполнен, удаляем самый старый элемент
-  if (componentCache.size >= MAX_CACHE_SIZE) {
+  // Если уже есть, удаляем старую запись
+  if (componentCache.has(routePath)) {
+    componentCache.delete(routePath);
+  }
+  
+  componentCache.set(routePath, component);
+  
+  // Если превысили лимит, удаляем самый старый (первый в Map)
+  if (componentCache.size > MAX_CACHE_SIZE) {
     const firstKey = componentCache.keys().next().value;
     componentCache.delete(firstKey);
   }
-  componentCache.set(routePath, component);
 }
 
 /**

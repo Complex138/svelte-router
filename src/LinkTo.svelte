@@ -2,6 +2,7 @@
   import { getContext, onMount } from 'svelte';
   import { linkTo } from './Router.js';
   import { prefetchRoute, prefetchRelated } from './core/prefetch.js';
+import { observeForPrefetch } from './core/shared-observer.js';
 
   export let route;
   export let params = {};
@@ -23,6 +24,7 @@
   let prefetchTimeout = null;
   let linkElement = null;
   let observer = null;
+  let abortController = null;
 
   function handleClick(event) {
     event.preventDefault();
@@ -43,23 +45,35 @@
 
   function handleMouseEnter() {
     if (prefetch === 'hover' && !prefetchTimeout) {
+      // Создаем новый AbortController для отмены
+      abortController = new AbortController();
+      
       prefetchTimeout = setTimeout(() => {
-        prefetchRoute(route).catch(err => console.warn('Prefetch failed:', err));
+        prefetchRoute(route, { signal: abortController.signal }).catch(err => {
+          if (err.name !== 'AbortError') {
+            console.warn('Prefetch failed:', err);
+          }
+        });
         prefetchTimeout = null;
       }, prefetchDelay);
     } else if (prefetch === 'smart' && smartPrefetch && !prefetchTimeout) {
+      // Создаем новый AbortController для отмены
+      abortController = new AbortController();
+      
       prefetchTimeout = setTimeout(async () => {
         try {
           // Prefetch текущий роут
-          await prefetchRoute(route);
+          await prefetchRoute(route, { signal: abortController.signal });
           
           // Prefetch предсказанные связанные роуты
           const predicted = smartPrefetch.predictNext(route);
           if (predicted.length > 0) {
-            await prefetchRelated(predicted.slice(0, 2), { parallel: true });
+            await prefetchRelated(predicted.slice(0, 2), { parallel: true, signal: abortController.signal });
           }
         } catch (err) {
-          console.warn('Smart prefetch failed:', err);
+          if (err.name !== 'AbortError') {
+            console.warn('Smart prefetch failed:', err);
+          }
         }
         prefetchTimeout = null;
       }, prefetchDelay);
@@ -92,43 +106,31 @@
       })();
     }
 
-    // Prefetch при появлении в viewport
+    // Prefetch при появлении в viewport (используем shared observer)
     if (prefetch === 'visible' && linkElement && 'IntersectionObserver' in window) {
-      observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              if (prefetch === 'smart' && smartPrefetch) {
-                // Умный prefetch при видимости
-                (async () => {
-                  try {
-                    await prefetchRoute(route);
-                    const predicted = smartPrefetch.predictNext(route);
-                    if (predicted.length > 0) {
-                      await prefetchRelated(predicted.slice(0, 2), { parallel: true });
-                    }
-                  } catch (err) {
-                    console.warn('Smart prefetch on visible failed:', err);
-                  }
-                })();
-              } else {
-                prefetchRoute(route).catch(err => console.warn('Prefetch on visible failed:', err));
+      const cleanup = observeForPrefetch(linkElement, route, () => {
+        if (prefetch === 'smart' && smartPrefetch) {
+          // Умный prefetch при видимости
+          (async () => {
+            try {
+              await prefetchRoute(route);
+              const predicted = smartPrefetch.predictNext(route);
+              if (predicted.length > 0) {
+                await prefetchRelated(predicted.slice(0, 2), { parallel: true });
               }
-              // Отключаем наблюдатель после первого prefetch
-              if (observer) {
-                observer.disconnect();
-                observer = null;
-              }
+            } catch (err) {
+              console.warn('Smart prefetch on visible failed:', err);
             }
-          });
-        },
-        {
-          rootMargin: '50px',
-          threshold: 0.01
+          })();
+        } else {
+          prefetchRoute(route).catch(err => console.warn('Prefetch on visible failed:', err));
         }
-      );
-
-      observer.observe(linkElement);
+      });
+      
+      // Сохраняем cleanup функцию
+      if (typeof cleanup === 'function') {
+        observer = { disconnect: cleanup };
+      }
     }
 
     return () => {
@@ -137,6 +139,9 @@
       }
       if (observer) {
         observer.disconnect();
+      }
+      if (abortController) {
+        abortController.abort();
       }
     };
   });

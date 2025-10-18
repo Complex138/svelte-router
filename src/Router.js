@@ -29,10 +29,10 @@ export function getQueryParams() {
 }
 
 export function getAllParams(path) {
-  return {
-    ...getRouteParams(path),
-    ...getQueryParams()
-  };
+  // Используем Object.create(null) для защиты от prototype pollution
+  const params = Object.create(null);
+  Object.assign(params, getRouteParams(path), getQueryParams());
+  return params;
 }
 
 export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, additionalProps = {}) {
@@ -51,10 +51,13 @@ export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, ad
       if (routeParams.includes(key)) {
         // Это параметр роута
         params[key] = value;
-      } else if (typeof value === 'string' && (value.startsWith('http') || value.includes('.'))) {
-        // Строки похожие на URL или файлы - скорее всего query параметры
-        query[key] = value;
-      } else {
+      } 
+      // Если нет явного указания на query параметры, то они считаются props и не ебем мозги!
+      // else if (typeof value === 'string' && value.startsWith('http')) {
+      //   // Только URL - скорее всего query параметры
+      //   query[key] = value;
+      // } 
+      else {
         // Остальное - дополнительные props
         props[key] = value;
       }
@@ -75,7 +78,7 @@ export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, ad
     window.history.pushState({}, '', url);
     updateAdditionalProps(props);
     updateUrlStore();
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    // Убираем dispatchEvent - navigate() сам обновляет роутер
   } else {
     console.warn(`Route ${pathOnly} not found`);
   }

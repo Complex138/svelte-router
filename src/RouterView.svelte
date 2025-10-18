@@ -5,7 +5,6 @@
   export let currentComponent;
   export let loadingComponent = null; // Optional custom loading component
   export let errorComponent = null; // Optional custom error component
-  console.log('RouterView received:', currentComponent);
   
   // Определяем layout компонент
   $: layoutComponent = currentComponent?.layout ? getLayout(currentComponent.layout) : null;

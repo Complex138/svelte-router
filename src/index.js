@@ -81,5 +81,12 @@ export {
   createRouteWithLayout
 } from './core/layout-utils.js';
 
+// Shared observer utilities
+export {
+  observeForPrefetch,
+  clearAllObservations,
+  getActiveObservationsCount
+} from './core/shared-observer.js';
+
 // Экспорт типов для TypeScript
 export * from './types.d.ts';

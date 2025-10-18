@@ -1,6 +1,6 @@
 {
   "name": "svelte-router-v5",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "description": "Simple and powerful router for Svelte 5 with automatic parameter extraction, reactive navigation, and regular expression support",
   "main": "src/index.js",
   "types": "src/types.d.ts",

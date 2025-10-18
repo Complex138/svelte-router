@@ -1,6 +1,6 @@
 // Разрешение маршрутов и компонентов
 import { getRoutes } from './routes-store.js';
-import { matchRoute } from './route-pattern.js';
+import { matchRoute, findBestRoute } from './route-pattern.js';
 import { getCachedComponent, setCachedComponent, hasCachedComponent } from './component-cache.js';
 
 export function isRouteConfig(routeValue) {
@@ -61,19 +61,17 @@ export function getRouteComponent(path) {
   if (routes[path]) {
     return getRouteComponentFromConfig(routes[path]);
   }
-  const routeEntries = Object.entries(routes).filter(([pattern]) => pattern !== '*');
-  routeEntries.sort(([a], [b]) => {
-    const aHasRegex = a.includes('(');
-    const bHasRegex = b.includes('(');
-    if (aHasRegex && !bHasRegex) return -1;
-    if (!aHasRegex && bHasRegex) return 1;
-    return 0;
-  });
-  for (const [routePattern, routeValue] of routeEntries) {
-    if (matchRoute(routePattern, path)) {
-      return getRouteComponentFromConfig(routeValue);
-    }
+  
+  // Используем findBestRoute для правильного ранжирования
+  const candidates = Object.entries(routes)
+    .filter(([pattern]) => pattern !== '*')
+    .map(([pattern, routeValue]) => ({ pattern, route: routeValue }));
+  
+  const bestRoute = findBestRoute(candidates, path);
+  if (bestRoute) {
+    return getRouteComponentFromConfig(bestRoute.route);
   }
+  
   return getRouteComponentFromConfig(routes['*']);
 }
 
@@ -95,19 +93,17 @@ export function getRoutePatternByPath(path) {
   if (routes[path]) {
     return path;
   }
-  const routeEntries = Object.entries(routes).filter(([pattern]) => pattern !== '*');
-  routeEntries.sort(([a], [b]) => {
-    const aHasRegex = a.includes('(');
-    const bHasRegex = b.includes('(');
-    if (aHasRegex && !bHasRegex) return -1;
-    if (!aHasRegex && bHasRegex) return 1;
-    return 0;
-  });
-  for (const [routePattern] of routeEntries) {
-    if (matchRoute(routePattern, path)) {
-      return routePattern;
-    }
+  
+  // Используем findBestRoute для правильного ранжирования
+  const candidates = Object.entries(routes)
+    .filter(([pattern]) => pattern !== '*')
+    .map(([pattern, routeValue]) => ({ pattern, route: routeValue }));
+  
+  const bestRoute = findBestRoute(candidates, path);
+  if (bestRoute) {
+    return bestRoute.pattern;
   }
+  
   return '*';
 }
 

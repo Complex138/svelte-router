@@ -111,6 +111,15 @@ export async function prefetchAll(options = {}) {
 export function prefetchOnIdle(routePatterns, options = {}) {
   const { timeout = 2000 } = options;
 
+  // Проверяем состояние сети
+  if ('connection' in navigator) {
+    const connection = navigator.connection;
+    if (connection.saveData || connection.effectiveType === '2g') {
+      console.log('Skipping idle prefetch on slow network');
+      return;
+    }
+  }
+
   if (typeof requestIdleCallback !== 'undefined') {
     requestIdleCallback(
       async (deadline) => {
@@ -240,15 +249,22 @@ export function createSmartPrefetch(historyLimit = 10) {
         navigationHistory.shift();
       }
 
-      // Обновляем паттерны переходов
+      // Обновляем паттерны переходов с LRU логикой
       const key = fromRoute;
-      if (!patterns.has(key)) {
+      
+      // Если паттерн уже существует, перемещаем его в конец (обновляем время использования)
+      if (patterns.has(key)) {
+        const existingTransitions = patterns.get(key);
+        patterns.delete(key);
+        patterns.set(key, existingTransitions);
+      } else {
         patterns.set(key, new Map());
       }
+      
       const transitions = patterns.get(key);
       transitions.set(toRoute, (transitions.get(toRoute) || 0) + 1);
 
-      // Предотвращаем утечку памяти - удаляем старые паттерны
+      // LRU: если превысили лимит, удаляем самый старый (первый в Map)
       if (patterns.size > MAX_PATTERNS) {
         const oldestKey = patterns.keys().next().value;
         patterns.delete(oldestKey);

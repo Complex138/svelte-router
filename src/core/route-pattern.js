@@ -1,7 +1,16 @@
 // Парсинг и сопоставление маршрутов с поддержкой регулярных выражений
 
+// Кеш для regex patterns для предотвращения повторного создания
+const regexCache = new Map();
+const parseCache = new Map();
+
 // Функция для парсинга паттерна роута с регулярными выражениями
 export function parseRoutePattern(routePattern) {
+  // Проверяем кеш
+  if (parseCache.has(routePattern)) {
+    return parseCache.get(routePattern);
+  }
+  
   const routeParts = routePattern.split('/');
   const params = [];
   let pattern = '';
@@ -49,14 +58,19 @@ export function parseRoutePattern(routePattern) {
     pattern = '^' + pattern + '$';
   }
   
-  return { pattern, params };
+  const result = { pattern, params };
+  parseCache.set(routePattern, result);
+  return result;
 }
 
 // Функция для проверки соответствия маршрута
 export function matchRoute(routePattern, actualPath) {
-  const { pattern } = parseRoutePattern(routePattern);
-  const regex = new RegExp(pattern);
-  return regex.test(actualPath);
+  // Проверяем кеш regex
+  if (!regexCache.has(routePattern)) {
+    const { pattern } = parseRoutePattern(routePattern);
+    regexCache.set(routePattern, new RegExp(pattern));
+  }
+  return regexCache.get(routePattern).test(actualPath);
 }
 
 // Функция для парсинга параметров из URL

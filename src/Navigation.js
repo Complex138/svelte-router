@@ -198,7 +198,7 @@ export function createNavigation(routesConfig = {}) {
         if (isLazyComponent(routeValue)) {
           component = await loadLazyComponent(routeValue, toPath);
         } else {
-          component = getRouteComponent(currentPath);
+          component = getRouteComponent(toPath);
         }
 
         // Проверяем что это всё еще актуальная навигация (предотвращаем race conditions)
@@ -316,7 +316,6 @@ export function createNavigation(routesConfig = {}) {
       }
 
       // Если все middleware прошли успешно, выполняем навигацию
-      const fromPath = currentPath;
       currentPath = toPath;
 
       // Записываем навигацию для умного prefetch
@@ -348,7 +347,7 @@ export function createNavigation(routesConfig = {}) {
         if (isLazyComponent(routeValue)) {
           component = await loadLazyComponent(routeValue, toPath);
         } else {
-          component = getRouteComponent(currentPath);
+          component = getRouteComponent(toPath);
         }
 
         currentComponent.set({
