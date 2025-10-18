@@ -23,6 +23,7 @@ import { isLazyComponent, loadLazyComponent } from './core/resolve.js';
 import { getRoutes } from './core/routes-store.js';
 import { matchRoute, findBestRoute, extractRouteParams } from './core/route-pattern.js';
 import { createSmartPrefetch } from './core/prefetch.js';
+import { autoInitHtmlLinks } from './core/html-links.js';
 import { setContext } from 'svelte';
 import { writable } from 'svelte/store';
 
@@ -418,11 +419,27 @@ export function createNavigation(routesConfig = {}) {
   // Передаем smartPrefetch через контекст для использования в LinkTo
   setContext('smartPrefetch', smartPrefetch);
 
+  // ✅ Автоматически инициализируем обработку HTML ссылок
+  const htmlLinksCleanup = autoInitHtmlLinks({
+    enabled: true,
+    selector: 'a[href]',
+    external: false,
+    exclude: [
+      'a[href^="http"]', 
+      'a[href^="mailto:"]', 
+      'a[href^="tel:"]', 
+      'a[target="_blank"]',
+      'a[download]',
+      'a[href^="javascript:"]'
+    ]
+  });
+
   // Возвращаем store с cleanup функцией
   return {
     ...currentComponent,
     destroy: () => {
       window.removeEventListener('popstate', popstateHandler);
+      if (htmlLinksCleanup) htmlLinksCleanup(); // ✅ Очищаем HTML ссылки
       globalNavigateFunction = null; // ✅ Очищаем глобальную ссылку
     }
   };

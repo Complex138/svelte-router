@@ -90,5 +90,12 @@ export {
 // Navigation utilities
 export { buildNavigationUrl, extractNavigationParams } from './Router.js';
 
+// HTML links utilities
+export {
+  initHtmlLinks,
+  autoInitHtmlLinks,
+  processLink
+} from './core/html-links.js';
+
 // Экспорт типов для TypeScript
 export * from './types.d.ts';
