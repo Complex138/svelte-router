@@ -3,7 +3,8 @@
   import { getLayout } from './core/layout-registry.js';
   import { navigate, getRouter } from './Navigation.js';
   import { createSmartPrefetch } from './core/prefetch.js';
-  import { setContext } from 'svelte';
+  import { autoInitHtmlLinks } from './core/html-links.js';
+  import { setContext, onMount } from 'svelte';
   
   export let currentComponent;
   export let loadingComponent = null; // Optional custom loading component
@@ -12,6 +13,11 @@
   // Передаем navigate и smartPrefetch через контекст
   setContext('navigate', navigate);
   setContext('smartPrefetch', createSmartPrefetch());
+
+  // Инициализируем обработку HTML ссылок в компоненте
+  onMount(() => {
+    autoInitHtmlLinks();
+  });
   
   // Определяем layout компонент
   $: layoutComponent = currentComponent?.layout 
