@@ -285,10 +285,18 @@ export function createSmartPrefetch(historyLimit = 10) {
     },
 
     prefetchPredicted: async (currentRoute, topN = 2) => {
-      const predicted = this.predictNext(currentRoute).slice(0, topN);
+      const predicted = smartPrefetch.predictNext(currentRoute).slice(0, topN);
       if (predicted.length > 0) {
         await prefetchRelated(predicted, { parallel: true });
       }
+    },
+    
+    // ✅ БОНУС: добавь методы для отладки
+    getNavigationHistory: () => [...navigationHistory],
+    getPatterns: () => new Map(patterns),
+    clearHistory: () => {
+      navigationHistory.length = 0;
+      patterns.clear();
     }
   };
 }

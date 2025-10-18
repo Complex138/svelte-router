@@ -7,7 +7,9 @@
   export let errorComponent = null; // Optional custom error component
   
   // Определяем layout компонент
-  $: layoutComponent = currentComponent?.layout ? getLayout(currentComponent.layout) : null;
+  $: layoutComponent = currentComponent?.layout 
+    ? (getLayout(currentComponent.layout) || null)
+    : null;
 </script>
 
 {#if currentComponent?.loading}

@@ -1,5 +1,5 @@
 // Главный файл экспорта для svelte-router
-export { createNavigation } from './Navigation.js';
+export { createNavigation, navigate } from './Navigation.js';
 export {
   getRouteComponent,
   routeExists,
@@ -8,7 +8,6 @@ export {
   getAllParams,
   getRoutParams,
   linkTo,
-  navigate,
   updateUrlStore,
   updateAdditionalProps,
   setRoutes,
@@ -87,6 +86,9 @@ export {
   clearAllObservations,
   getActiveObservationsCount
 } from './core/shared-observer.js';
+
+// Navigation utilities
+export { buildNavigationUrl, extractNavigationParams } from './Router.js';
 
 // Экспорт типов для TypeScript
 export * from './types.d.ts';

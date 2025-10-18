@@ -14,14 +14,20 @@ import {
   getRoutePatternByPath,
   executeMiddleware,
   executeGlobalMiddleware,
-  createMiddlewareContext
+  createMiddlewareContext,
+  linkTo,
+  buildNavigationUrl,
+  extractNavigationParams
 } from './Router.js';
 import { isLazyComponent, loadLazyComponent } from './core/resolve.js';
 import { getRoutes } from './core/routes-store.js';
-import { matchRoute, findBestRoute } from './core/route-pattern.js';
+import { matchRoute, findBestRoute, extractRouteParams } from './core/route-pattern.js';
 import { createSmartPrefetch } from './core/prefetch.js';
 import { setContext } from 'svelte';
 import { writable } from 'svelte/store';
+
+// ✅ Глобальная ссылка на правильный navigate (singleton pattern)
+let globalNavigateFunction = null;
 
 // Создаем объект для управления навигацией
 export function createNavigation(routesConfig = {}) {
@@ -162,24 +168,17 @@ export function createNavigation(routesConfig = {}) {
         }
       }
 
-      // 5. Если все middleware прошли успешно, выполняем навигацию
-      currentPath = toPath;
-      window.history.pushState({}, '', fullPath);
-
-      // Записываем навигацию для умного prefetch
+      // 5. Записываем навигацию для умного prefetch (до изменения URL)
       smartPrefetch.recordNavigation(fromPath, toPath);
 
-      // Обновляем дополнительные props
-      updateAdditionalProps(additionalProps);
-
-      // Устанавливаем состояние загрузки
+      // 6. Устанавливаем состояние загрузки (но URL ещё НЕ меняем)
       currentComponent.update(state => ({
         ...state,
         loading: true,
         error: null
       }));
 
-      // Получаем роут и загружаем компонент
+      // 7. ЗАГРУЖАЕМ КОМПОНЕНТ СНАЧАЛА
       try {
         const routes = getRoutes();
         
@@ -207,6 +206,11 @@ export function createNavigation(routesConfig = {}) {
           return;
         }
 
+        // 8. ТОЛЬКО СЕЙЧАС МЕНЯЕМ URL (когда компонент загружен)
+        currentPath = toPath;
+        window.history.pushState({}, '', fullPath);
+        updateAdditionalProps(additionalProps);
+
         // Обновляем store с новыми props и загруженным компонентом
         currentComponent.set({
           component,
@@ -222,12 +226,20 @@ export function createNavigation(routesConfig = {}) {
         });
       } catch (error) {
         console.error('Failed to load component:', error);
+        
+        // ❌ Если ошибка - НЕ меняем URL!
         currentComponent.set({
           component: null,
           props: {},
           loading: false,
           error: error.message || 'Failed to load component'
         });
+        
+        try {
+          await executeGlobalMiddleware('error', middlewareContext);
+        } catch (errorHandlerError) {
+          console.error('Error in error middleware:', errorHandlerError);
+        }
         return;
       }
 
@@ -315,20 +327,17 @@ export function createNavigation(routesConfig = {}) {
         }
       }
 
-      // Если все middleware прошли успешно, выполняем навигацию
-      currentPath = toPath;
-
-      // Записываем навигацию для умного prefetch
+      // Записываем навигацию для умного prefetch (до изменения currentPath)
       smartPrefetch.recordNavigation(fromPath, toPath);
 
-      // Устанавливаем состояние загрузки
+      // Устанавливаем состояние загрузки (но currentPath ещё НЕ меняем)
       currentComponent.update(state => ({
         ...state,
         loading: true,
         error: null
       }));
 
-      // Получаем роут и загружаем компонент
+      // ЗАГРУЖАЕМ КОМПОНЕНТ СНАЧАЛА
       try {
         const routes = getRoutes();
         
@@ -350,6 +359,9 @@ export function createNavigation(routesConfig = {}) {
           component = getRouteComponent(toPath);
         }
 
+        // ТОЛЬКО СЕЙЧАС МЕНЯЕМ currentPath (когда компонент загружен)
+        currentPath = toPath;
+
         currentComponent.set({
           component,
           layout: routeValue.layout,
@@ -363,12 +375,20 @@ export function createNavigation(routesConfig = {}) {
         });
       } catch (error) {
         console.error('Failed to load component on popstate:', error);
+        
+        // ❌ Если ошибка - НЕ меняем currentPath!
         currentComponent.set({
           component: null,
           props: {},
           loading: false,
           error: error.message || 'Failed to load component'
         });
+        
+        try {
+          await executeGlobalMiddleware('error', middlewareContext);
+        } catch (errorHandlerError) {
+          console.error('Error in error middleware:', errorHandlerError);
+        }
         return;
       }
 
@@ -389,6 +409,9 @@ export function createNavigation(routesConfig = {}) {
   // Добавляем popstate listener
   window.addEventListener('popstate', popstateHandler);
 
+  // ✅ Сохраняем глобальную ссылку на правильный navigate
+  globalNavigateFunction = navigate;
+
   // Передаем функцию navigate через контекст
   setContext('navigate', navigate);
 
@@ -400,6 +423,21 @@ export function createNavigation(routesConfig = {}) {
     ...currentComponent,
     destroy: () => {
       window.removeEventListener('popstate', popstateHandler);
+      globalNavigateFunction = null; // ✅ Очищаем глобальную ссылку
     }
   };
+}
+
+// ✅ ЭКСПОРТИРУЕМ navigate для использования везде!
+export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, additionalProps = {}) {
+  if (!globalNavigateFunction) {
+    throw new Error('Router not initialized. Call createNavigation() in your root component first.');
+  }
+  
+  // Парсим параметры (вся логика из Router.js)
+  const { params, query, props } = extractNavigationParams(routePattern, paramsOrConfig, queryParams, additionalProps);
+  
+  // Строим URL и вызываем ПРАВИЛЬНЫЙ navigate
+  const url = buildNavigationUrl(routePattern, params, query);
+  globalNavigateFunction(url, props);
 }

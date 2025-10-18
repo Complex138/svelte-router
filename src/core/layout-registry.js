@@ -17,7 +17,14 @@ export function registerLayout(name, component) {
  * @returns {Component|null} Layout компонент или null
  */
 export function getLayout(name) {
-  return layoutRegistry.get(name) || null;
+  const layout = layoutRegistry.get(name);
+  
+  if (!layout) {
+    console.warn(`Layout "${name}" not found`);
+    return null; // ✅ Явно возвращаем null
+  }
+  
+  return layout;
 }
 
 /**

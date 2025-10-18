@@ -10,6 +10,7 @@ import { registerMiddleware } from './middleware/registry.js';
 import { registerGlobalMiddleware } from './middleware/global.js';
 import { executeMiddleware, executeGlobalMiddleware, createMiddlewareContext } from './middleware/exec.js';
 import { getRouteMiddlewareByPath, getRouteBeforeEnterByPath, getRouteAfterEnterByPath } from './middleware/route-meta.js';
+import { createSafeObject, filterDangerousKeys } from './core/safe-object.js';
 
 export { setRoutes, updateUrlStore, getRouteComponent, routeExists, linkTo, getRoutesWithComponents, getAllRoutes };
 export { registerMiddleware, registerGlobalMiddleware, executeMiddleware, executeGlobalMiddleware, createMiddlewareContext };
@@ -19,51 +20,48 @@ export { getRoutParams, updateAdditionalProps };
 export function getRouteParams(path) {
   const pattern = getRoutePatternByPath(path);
   if (pattern && pattern !== '*') {
-    return parseParams(pattern, path);
+    const params = parseParams(pattern, path);
+    return createSafeObject(params); // ✅ Защита от prototype pollution
   }
-  return {};
+  return createSafeObject(); // ✅ Безопасный пустой объект
 }
 
 export function getQueryParams() {
-  return parseQueryParams(window.location.search);
+  const parsed = parseQueryParams(window.location.search);
+  return createSafeObject(parsed); // ✅ Дополнительная защита
 }
 
 export function getAllParams(path) {
-  // Используем Object.create(null) для защиты от prototype pollution
-  const params = Object.create(null);
+  const params = createSafeObject(); // ✅ Безопасный объект
   Object.assign(params, getRouteParams(path), getQueryParams());
   return params;
 }
 
-export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, additionalProps = {}) {
+// Navigation utilities (без pushState)
+export function buildNavigationUrl(routePattern, params = {}, queryParams = {}) {
+  return linkTo(routePattern, params, queryParams);
+}
+
+export function extractNavigationParams(routePattern, paramsOrConfig = {}, queryParams = {}, additionalProps = {}) {
   let params, query, props;
   if (paramsOrConfig && typeof paramsOrConfig === 'object' && (paramsOrConfig.params || paramsOrConfig.queryParams || paramsOrConfig.props)) {
     params = paramsOrConfig.params || {};
     query = paramsOrConfig.queryParams || {};
     props = paramsOrConfig.props || {};
   } else if (paramsOrConfig && typeof paramsOrConfig === 'object' && !paramsOrConfig.params && !paramsOrConfig.queryParams && !paramsOrConfig.props) {
-    // Auto-detection: пытаемся угадать что params а что props
+    // Auto-detection
     const routeParams = extractRouteParams(routePattern);
     params = {};
     props = {};
     
     for (const [key, value] of Object.entries(paramsOrConfig)) {
       if (routeParams.includes(key)) {
-        // Это параметр роута
         params[key] = value;
-      } 
-      // Если нет явного указания на query параметры, то они считаются props и не ебем мозги!
-      // else if (typeof value === 'string' && value.startsWith('http')) {
-      //   // Только URL - скорее всего query параметры
-      //   query[key] = value;
-      // } 
-      else {
-        // Остальное - дополнительные props
+      } else {
         props[key] = value;
       }
     }
     
-    // Добавляем query параметры если они переданы отдельно
     if (queryParams) {
       Object.assign(query, queryParams);
     }
@@ -72,15 +70,7 @@ export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, ad
     query = queryParams || {};
     props = additionalProps || {};
   }
-  const url = linkTo(routePattern, params, query);
-  const pathOnly = url.split('?')[0];
-  if (routeExists(pathOnly)) {
-    window.history.pushState({}, '', url);
-    updateAdditionalProps(props);
-    updateUrlStore();
-    // Убираем dispatchEvent - navigate() сам обновляет роутер
-  } else {
-    console.warn(`Route ${pathOnly} not found`);
-  }
+  
+  return { params, query, props };
 }
 
