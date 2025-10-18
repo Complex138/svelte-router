@@ -1,6 +1,9 @@
 // Хранилище конфигурации роутов (простая переменная-модуль)
 
+import { createRouteWithLayout, extractGlobalSettings } from './layout-utils.js';
+
 let routes = {};
+let globalSettings = {};
 
 // Вспомогательные утилиты для групп
 function isRouteConfig(value) {
@@ -62,7 +65,8 @@ function flattenRoutesTree(node, accMeta, out) {
       prefix: normalizePath(accMeta.prefix, node.prefix || ''),
       middleware: [...(accMeta.middleware || []), ...(node.middleware || [])],
       befores: [...(accMeta.befores || []), ...(node.beforeEnter ? [node.beforeEnter] : [])],
-      afters: [...(accMeta.afters || []), ...(node.afterEnter ? [node.afterEnter] : [])]
+      afters: [...(accMeta.afters || []), ...(node.afterEnter ? [node.afterEnter] : [])],
+      layout: node.layout || accMeta.layout  // Передаем layout группы
     };
     flattenRoutesTree(node.routes, nextMeta, out);
     return;
@@ -88,7 +92,8 @@ function flattenRoutesTree(node, accMeta, out) {
         prefix: normalizePath(accMeta.prefix, value.prefix || ''),
         middleware: [...(accMeta.middleware || []), ...(value.middleware || [])],
         befores: [...(accMeta.befores || []), ...(value.beforeEnter ? [value.beforeEnter] : [])],
-        afters: [...(accMeta.afters || []), ...(value.afterEnter ? [value.afterEnter] : [])]
+        afters: [...(accMeta.afters || []), ...(value.afterEnter ? [value.afterEnter] : [])],
+        layout: value.layout || accMeta.layout  // Передаем layout группы
       };
       flattenRoutesTree(value.routes, nextMeta, out);
       continue;
@@ -99,8 +104,12 @@ function flattenRoutesTree(node, accMeta, out) {
     if (isRouteConfig(value)) {
       const composedBefore = composeBeforeEnter([...(accMeta.befores || []), value.beforeEnter].filter(Boolean));
       const composedAfter = composeAfterEnter([...(accMeta.afters || []), value.afterEnter].filter(Boolean));
+      
+      // Создаем роут с layout информацией
+      const routeWithLayout = createRouteWithLayout(value, accMeta, globalSettings);
+      
       const merged = {
-        component: value.component,
+        ...routeWithLayout,
         middleware: [...(accMeta.middleware || []), ...(value.middleware || [])],
         beforeEnter: composedBefore,
         afterEnter: composedAfter
@@ -109,15 +118,20 @@ function flattenRoutesTree(node, accMeta, out) {
     } else {
       // Простой компонент или лоадер
       if ((accMeta.middleware && accMeta.middleware.length) || (accMeta.befores && accMeta.befores.length) || (accMeta.afters && accMeta.afters.length)) {
+        // Создаем роут с layout информацией для простого компонента
+        const routeWithLayout = createRouteWithLayout({ component: value }, accMeta, globalSettings);
+        
         const merged = {
-          component: value,
+          ...routeWithLayout,
           middleware: [...(accMeta.middleware || [])],
           beforeEnter: composeBeforeEnter(accMeta.befores || []),
           afterEnter: composeAfterEnter(accMeta.afters || [])
         };
         out[finalPath] = merged;
       } else {
-        out[finalPath] = value;
+        // Создаем роут с layout информацией для простого компонента без middleware
+        const routeWithLayout = createRouteWithLayout({ component: value }, accMeta, globalSettings);
+        out[finalPath] = routeWithLayout;
       }
     }
   }
@@ -130,8 +144,11 @@ export function setRoutes(routesConfig) {
     return;
   }
 
+  // Извлекаем глобальные настройки
+  globalSettings = extractGlobalSettings(routesConfig);
+  
   const flattened = {};
-  flattenRoutesTree(routesConfig, { prefix: '', middleware: [], befores: [], afters: [] }, flattened);
+  flattenRoutesTree(routesConfig, { prefix: '', middleware: [], befores: [], afters: [], layout: null }, flattened);
   routes = flattened;
 }
 
@@ -145,6 +162,10 @@ export function getRoutesWithComponents() {
 
 export function getAllRoutes() {
   return Object.keys(routes);
+}
+
+export function getGlobalSettings() {
+  return globalSettings;
 }
 
 

@@ -62,5 +62,24 @@ export {
   getCachedPaths
 } from './core/component-cache.js';
 
+// Layout utilities
+export {
+  registerLayout,
+  getLayout,
+  hasLayout,
+  getAllLayouts,
+  clearLayouts,
+  getLayoutNames,
+  debugLayouts
+} from './core/layout-registry.js';
+
+export {
+  resolveLayout,
+  getLayoutComponent,
+  needsLayout,
+  extractGlobalSettings,
+  createRouteWithLayout
+} from './core/layout-utils.js';
+
 // Экспорт типов для TypeScript
 export * from './types.d.ts';

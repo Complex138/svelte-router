@@ -1,9 +1,14 @@
 <script>
   // RouterView component for rendering current route with lazy loading support
+  import { getLayout } from './core/layout-registry.js';
+  
   export let currentComponent;
   export let loadingComponent = null; // Optional custom loading component
   export let errorComponent = null; // Optional custom error component
   console.log('RouterView received:', currentComponent);
+  
+  // Определяем layout компонент
+  $: layoutComponent = currentComponent?.layout ? getLayout(currentComponent.layout) : null;
 </script>
 
 {#if currentComponent?.loading}
@@ -23,7 +28,11 @@
     </div>
   {/if}
 {:else if currentComponent?.component}
-  <svelte:component this={currentComponent.component} {...currentComponent.props} />
+  {#if layoutComponent}
+    <svelte:component this={layoutComponent} component={currentComponent.component} {...currentComponent.props} />
+  {:else}
+    <svelte:component this={currentComponent.component} {...currentComponent.props} />
+  {/if}
 {/if}
 
 <style>

@@ -57,6 +57,7 @@ export function createNavigation(routesConfig = {}) {
         const component = await loadLazyComponent(routeValue, currentPath);
         currentComponent.set({
           component,
+          layout: routeValue.layout,
           props: {
             routeParams: getRouteParams(currentPath),
             queryParams: getQueryParams(),
@@ -68,6 +69,7 @@ export function createNavigation(routesConfig = {}) {
       } else {
         currentComponent.set({
           component: getRouteComponent(currentPath),
+          layout: routeValue.layout,
           props: {
             routeParams: getRouteParams(currentPath),
             queryParams: getQueryParams(),
@@ -184,6 +186,7 @@ export function createNavigation(routesConfig = {}) {
         // Обновляем store с новыми props и загруженным компонентом
         currentComponent.set({
           component,
+          layout: routeValue.layout,
           props: {
             routeParams: getRouteParams(currentPath),
             queryParams: getQueryParams(),
@@ -319,6 +322,7 @@ export function createNavigation(routesConfig = {}) {
 
         currentComponent.set({
           component,
+          layout: routeValue.layout,
           props: {
             routeParams: getRouteParams(currentPath),
             queryParams: getQueryParams(),
