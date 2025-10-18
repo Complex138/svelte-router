@@ -18,7 +18,8 @@ export function getHashPath() {
   if (!hash || !hash.startsWith('/')) {
     return '/';
   }
-  return hash;
+  // Убираем двойные слеши и хеши
+  return hash.replace(/^#+/, '').replace(/\/+/g, '/');
 }
 
 /**
@@ -26,8 +27,8 @@ export function getHashPath() {
  * @param {string} path
  */
 export function setHashPath(path) {
-  // Убираем существующий hash если есть
-  const cleanPath = path.startsWith('#') ? path.substring(1) : path;
+  // Убираем ВСЕ хеши и лишние слеши
+  const cleanPath = path.replace(/^#+/, '').replace(/\/+/g, '/');
   window.location.hash = `#${cleanPath}`;
 }
 
@@ -38,7 +39,9 @@ export function setHashPath(path) {
  * @returns {string}
  */
 export function buildHashUrl(path, queryParams = {}) {
-  let url = path.startsWith('/') ? `#${path}` : `/#${path}`;
+  // Убираем все хеши и лишние слеши
+  const cleanPath = path.replace(/^#+/, '').replace(/\/+/g, '/');
+  let url = cleanPath.startsWith('/') ? `#${cleanPath}` : `/#${cleanPath}`;
   if (Object.keys(queryParams).length > 0) {
     const searchParams = new URLSearchParams(queryParams);
     url += '?' + searchParams.toString();

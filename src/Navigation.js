@@ -111,7 +111,7 @@ export function createNavigation(routesConfig = {}, options = {}) {
         
         currentComponent.set({
           component,
-          layout: routeValue.layout,
+          layout: routeValue?.layout || null,
           props: {
             routeParams,
             queryParams,
@@ -460,29 +460,8 @@ export function createNavigation(routesConfig = {}, options = {}) {
   // ✅ Сохраняем глобальную ссылку на правильный navigate
   globalNavigateFunction = navigate;
 
-  // Передаем функцию navigate через контекст
-  setContext('navigate', navigate);
-  
   // Загружаем начальный компонент ПОСЛЕ инициализации listeners
   loadInitialComponent();
-
-  // Передаем smartPrefetch через контекст для использования в LinkTo
-  setContext('smartPrefetch', smartPrefetch);
-
-  // ✅ Автоматически инициализируем обработку HTML ссылок
-  const htmlLinksCleanup = autoInitHtmlLinks({
-    enabled: true,
-    selector: 'a[href]',
-    external: false,
-    exclude: [
-      'a[href^="http"]', 
-      'a[href^="mailto:"]', 
-      'a[href^="tel:"]', 
-      'a[target="_blank"]',
-      'a[download]',
-      'a[href^="javascript:"]'
-    ]
-  });
 
   /**
    * Переключает режим роутинга (hash/history/auto)

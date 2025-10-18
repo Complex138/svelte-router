@@ -1,10 +1,17 @@
 <script>
   // RouterView component for rendering current route with lazy loading support
   import { getLayout } from './core/layout-registry.js';
+  import { navigate, getRouter } from './Navigation.js';
+  import { createSmartPrefetch } from './core/prefetch.js';
+  import { setContext } from 'svelte';
   
   export let currentComponent;
   export let loadingComponent = null; // Optional custom loading component
   export let errorComponent = null; // Optional custom error component
+  
+  // Передаем navigate и smartPrefetch через контекст
+  setContext('navigate', navigate);
+  setContext('smartPrefetch', createSmartPrefetch());
   
   // Определяем layout компонент
   $: layoutComponent = currentComponent?.layout 
