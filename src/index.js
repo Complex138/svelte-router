@@ -1,5 +1,5 @@
 // Главный файл экспорта для svelte-router
-export { createNavigation, navigate } from './Navigation.js';
+export { createNavigation, navigate, getRouter } from './Navigation.js';
 export {
   getRouteComponent,
   routeExists,
@@ -96,6 +96,17 @@ export {
   autoInitHtmlLinks,
   processLink
 } from './core/html-links.js';
+
+// Hash routing utilities
+export {
+  isHashMode,
+  getHashPath,
+  setHashPath,
+  buildHashUrl,
+  parseHashUrl,
+  listenToHashChanges,
+  initHashRouting
+} from './core/hash-utils.js';
 
 // Экспорт типов для TypeScript
 export * from './types.d.ts';

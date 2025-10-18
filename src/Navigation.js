@@ -24,6 +24,14 @@ import { getRoutes } from './core/routes-store.js';
 import { matchRoute, findBestRoute, extractRouteParams } from './core/route-pattern.js';
 import { createSmartPrefetch } from './core/prefetch.js';
 import { autoInitHtmlLinks } from './core/html-links.js';
+import { 
+  isHashMode, 
+  getHashPath, 
+  setHashPath, 
+  buildHashUrl, 
+  parseHashUrl, 
+  initHashRouting 
+} from './core/hash-utils.js';
 import { setContext } from 'svelte';
 import { writable } from 'svelte/store';
 
@@ -31,10 +39,14 @@ import { writable } from 'svelte/store';
 let globalNavigateFunction = null;
 
 // Создаем объект для управления навигацией
-export function createNavigation(routesConfig = {}) {
+export function createNavigation(routesConfig = {}, options = {}) {
   // Устанавливаем routes
   setRoutes(routesConfig);
-  let currentPath = window.location.pathname;
+  
+  // Определяем режим навигации
+  const useHash = options.hash !== undefined ? options.hash : isHashMode();
+  let currentPath = useHash ? getHashPath() : window.location.pathname;
+  
   
   // Добавляем navigationId для предотвращения race conditions
   let navigationId = 0;
@@ -59,42 +71,60 @@ export function createNavigation(routesConfig = {}) {
     try {
       const routes = getRoutes();
       
+      // Для hash mode используем путь из hash, для history - из pathname
+      const pathToLoad = useHash ? getHashPath() : currentPath;
+      
+      
       // Используем route ranking для правильного выбора роута
-      let routeValue = routes[currentPath];
+      let routeValue = routes[pathToLoad];
+      
       if (!routeValue) {
         const candidates = Object.entries(routes)
           .filter(([pattern]) => pattern !== '*')
           .map(([pattern, route]) => ({ pattern, route }));
         
-        const bestRoute = findBestRoute(candidates, currentPath);
+        const bestRoute = findBestRoute(candidates, pathToLoad);
         routeValue = bestRoute?.route || routes['*'];
       }
 
+      
       if (isLazyComponent(routeValue)) {
-        const component = await loadLazyComponent(routeValue, currentPath);
+        const component = await loadLazyComponent(routeValue, pathToLoad);
         currentComponent.set({
           component,
           layout: routeValue.layout,
           props: {
-            routeParams: getRouteParams(currentPath),
+            routeParams: getRouteParams(pathToLoad),
             queryParams: getQueryParams(),
-            allParams: getAllParams(currentPath)
+            allParams: getAllParams(pathToLoad)
           },
           loading: false,
           error: null
         });
       } else {
+        const component = getRouteComponent(pathToLoad);
+        
+        const routeParams = getRouteParams(pathToLoad);
+        const queryParams = getQueryParams();
+        const allParams = getAllParams(pathToLoad);
+        
+        
         currentComponent.set({
-          component: getRouteComponent(currentPath),
+          component,
           layout: routeValue.layout,
           props: {
-            routeParams: getRouteParams(currentPath),
-            queryParams: getQueryParams(),
-            allParams: getAllParams(currentPath)
+            routeParams,
+            queryParams,
+            allParams
           },
           loading: false,
           error: null
         });
+      }
+      
+      // Обновляем currentPath для hash mode
+      if (useHash) {
+        currentPath = pathToLoad;
       }
     } catch (error) {
       console.error('Failed to load initial component:', error);
@@ -107,13 +137,16 @@ export function createNavigation(routesConfig = {}) {
     }
   }
 
-  // Загружаем начальный компонент
-  loadInitialComponent();
-
   // Функция навигации с поддержкой middleware
   async function navigate(fullPath, additionalProps = {}) {
     // Извлекаем только путь без query string для проверки
-    const pathOnly = fullPath.split('?')[0];
+    let pathOnly = fullPath.split('?')[0];
+    
+    // Для hash mode убираем # из пути
+    if (useHash && pathOnly.startsWith('#')) {
+      pathOnly = pathOnly.substring(1);
+    }
+    
     
     if (!routeExists(pathOnly)) {
       console.warn(`Route ${pathOnly} not found`);
@@ -209,7 +242,14 @@ export function createNavigation(routesConfig = {}) {
 
         // 8. ТОЛЬКО СЕЙЧАС МЕНЯЕМ URL (когда компонент загружен)
         currentPath = toPath;
-        window.history.pushState({}, '', fullPath);
+        
+        if (useHash) {
+          // Hash routing - используем только путь, не полный URL
+          setHashPath(toPath);
+        } else {
+          // History API routing
+          window.history.pushState({}, '', fullPath);
+        }
         updateAdditionalProps(additionalProps);
 
         // Обновляем store с новыми props и загруженным компонентом
@@ -277,7 +317,7 @@ export function createNavigation(routesConfig = {}) {
 
   // Обработка кнопок браузера с поддержкой middleware
   const popstateHandler = async () => {
-    const newPath = window.location.pathname;
+    const newPath = useHash ? getHashPath() : window.location.pathname;
     
     if (!routeExists(newPath)) {
       console.warn(`Route ${newPath} not found`);
@@ -407,14 +447,24 @@ export function createNavigation(routesConfig = {}) {
     }
   };
 
-  // Добавляем popstate listener
-  window.addEventListener('popstate', popstateHandler);
+  // Добавляем listener для навигации
+  let navigationCleanup;
+  if (useHash) {
+    // Hash routing
+    navigationCleanup = initHashRouting(navigate);
+  } else {
+    // History API routing
+    window.addEventListener('popstate', popstateHandler);
+  }
 
   // ✅ Сохраняем глобальную ссылку на правильный navigate
   globalNavigateFunction = navigate;
 
   // Передаем функцию navigate через контекст
   setContext('navigate', navigate);
+  
+  // Загружаем начальный компонент ПОСЛЕ инициализации listeners
+  loadInitialComponent();
 
   // Передаем smartPrefetch через контекст для использования в LinkTo
   setContext('smartPrefetch', smartPrefetch);
@@ -434,15 +484,76 @@ export function createNavigation(routesConfig = {}) {
     ]
   });
 
-  // Возвращаем store с cleanup функцией
-  return {
+  /**
+   * Переключает режим роутинга (hash/history/auto)
+   * @param {string} mode - 'hash', 'history', или 'auto'
+   * @param {boolean} preserveUrl - сохранять ли текущий URL (по умолчанию true)
+   */
+  function switchRoutingMode(mode, preserveUrl = true) {
+    let targetPath = '/';
+    
+    if (preserveUrl) {
+      // Получаем текущий путь в зависимости от режима
+      if (useHash) {
+        targetPath = getHashPath();
+      } else {
+        targetPath = window.location.pathname;
+      }
+    }
+    
+    switch (mode) {
+      case 'hash':
+        if (!useHash) {
+          // Переключаемся с history на hash
+          window.location.href = window.location.origin + '#' + targetPath;
+        }
+        break;
+        
+      case 'history':
+        if (useHash) {
+          // Переключаемся с hash на history
+          window.location.href = window.location.origin + targetPath;
+        }
+        break;
+        
+      case 'auto':
+        // Автоматическое определение по текущему URL
+        if (window.location.hash.startsWith('#/')) {
+          // Уже в hash режиме, ничего не делаем
+          return;
+        } else {
+          // Переключаемся в hash режим
+          window.location.href = window.location.origin + '#' + targetPath;
+        }
+        break;
+        
+      default:
+        console.warn(`Unknown routing mode: ${mode}`);
+    }
+  }
+
+  // Создаем router instance
+  const routerInstance = {
     ...currentComponent,
+    switchRoutingMode,
     destroy: () => {
-      window.removeEventListener('popstate', popstateHandler);
+      if (useHash) {
+        // Hash routing cleanup
+        if (navigationCleanup) navigationCleanup();
+      } else {
+        // History API cleanup
+        window.removeEventListener('popstate', popstateHandler);
+      }
       if (htmlLinksCleanup) htmlLinksCleanup(); // ✅ Очищаем HTML ссылки
       globalNavigateFunction = null; // ✅ Очищаем глобальную ссылку
+      globalRouterInstance = null; // ✅ Очищаем глобальную ссылку на router
     }
   };
+
+  // Сохраняем глобальную ссылку на router
+  globalRouterInstance = routerInstance;
+
+  return routerInstance;
 }
 
 // ✅ ЭКСПОРТИРУЕМ navigate для использования везде!
@@ -457,4 +568,15 @@ export function navigate(routePattern, paramsOrConfig = {}, queryParams = {}, ad
   // Строим URL и вызываем ПРАВИЛЬНЫЙ navigate
   const url = buildNavigationUrl(routePattern, params, query);
   globalNavigateFunction(url, props);
+}
+
+// ✅ ЭКСПОРТИРУЕМ функцию для получения навигатора
+let globalRouterInstance = null;
+
+export function getRouter() {
+  if (!globalRouterInstance) {
+    console.warn('Router not initialized. Call createNavigation() first.');
+    return null;
+  }
+  return globalRouterInstance;
 }

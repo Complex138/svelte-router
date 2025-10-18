@@ -10,6 +10,7 @@
   $: layoutComponent = currentComponent?.layout 
     ? (getLayout(currentComponent.layout) || null)
     : null;
+    
 </script>
 
 {#if currentComponent?.loading}
