@@ -4,6 +4,7 @@
 const regexCache = new Map();
 const parseCache = new Map();
 
+
 // Функция для парсинга паттерна роута с регулярными выражениями
 export function parseRoutePattern(routePattern) {
   // Проверяем кеш
@@ -27,19 +28,38 @@ export function parseRoutePattern(routePattern) {
     }
     
     if (part.startsWith(':')) {
-      // Проверяем есть ли регулярное выражение в скобках
-      const match = part.match(/^:([^(]+)(?:\(([^)]+)\))?$/);
-      if (match) {
-        const paramName = match[1];
-        const regex = match[2] || '[^/]+'; // По умолчанию любой символ кроме /
-        
-        params.push(paramName);
-        pattern += `/(${regex})`;
+      // Проверяем есть ли ? в конце (optional parameter)
+      if (part.endsWith('?')) {
+        // Optional parameter: :id? или :id(\\d+)?
+        const optionalMatch = part.match(/^:([^(]+)(?:\(([^)]+)\))?\?$/);
+        if (optionalMatch) {
+          const paramName = optionalMatch[1];
+          const regex = optionalMatch[2] || '[^/]+';
+          
+          params.push(paramName);
+          // Optional parameter: (regex)?
+          pattern += `(?:/(${regex}))?`;
+        } else {
+          // Fallback для старых optional роутов
+          const paramName = part.slice(1, -1); // убираем : и ?
+          params.push(paramName);
+          pattern += `(?:/([^/]+))?`;
+        }
       } else {
-        // Fallback для старых роутов
-        const paramName = part.slice(1);
-        params.push(paramName);
-        pattern += `/([^/]+)`;
+        // Обычный параметр
+        const match = part.match(/^:([^(]+)(?:\(([^)]+)\))?$/);
+        if (match) {
+          const paramName = match[1];
+          const regex = match[2] || '[^/]+';
+          
+          params.push(paramName);
+          pattern += `/(${regex})`;
+        } else {
+          // Fallback для старых роутов
+          const paramName = part.slice(1);
+          params.push(paramName);
+          pattern += `/([^/]+)`;
+        }
       }
     } else {
       // Обычная часть пути
@@ -70,7 +90,9 @@ export function matchRoute(routePattern, actualPath) {
     const { pattern } = parseRoutePattern(routePattern);
     regexCache.set(routePattern, new RegExp(pattern));
   }
-  return regexCache.get(routePattern).test(actualPath);
+  
+  const matches = regexCache.get(routePattern).test(actualPath);
+  return matches;
 }
 
 // Функция для парсинга параметров из URL
@@ -85,7 +107,11 @@ export function parseParams(routePattern, actualPath) {
   
   const result = {};
   params.forEach((param, index) => {
-    result[param] = matches[index + 1];
+    const value = matches[index + 1];
+    // Для optional parameters, если значение undefined, не добавляем в результат
+    if (value !== undefined) {
+      result[param] = value;
+    }
   });
   
   return result;
