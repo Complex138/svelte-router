@@ -50,12 +50,12 @@ function composeAfterEnter(handlers) {
   };
 }
 
-function flattenRoutesTree(node, accMeta, out) {
+function flattenRoutesTree(node, accMeta, out, globalSettings = {}) {
   if (!node) return;
 
   // Если передали массив групп/нод
   if (Array.isArray(node)) {
-    for (const child of node) flattenRoutesTree(child, accMeta, out);
+    for (const child of node) flattenRoutesTree(child, accMeta, out, globalSettings);
     return;
   }
 
@@ -68,7 +68,7 @@ function flattenRoutesTree(node, accMeta, out) {
       afters: [...(accMeta.afters || []), ...(node.afterEnter ? [node.afterEnter] : [])],
       layout: node.layout || accMeta.layout  // Передаем layout группы
     };
-    flattenRoutesTree(node.routes, nextMeta, out);
+    flattenRoutesTree(node.routes, nextMeta, out, globalSettings);
     return;
   }
 
@@ -76,7 +76,7 @@ function flattenRoutesTree(node, accMeta, out) {
   for (const [path, value] of Object.entries(node)) {
     // Специальный ключ для вложенных групп: group или groups
     if (path === 'group' || path === 'groups') {
-      flattenRoutesTree(value, accMeta, out);
+      flattenRoutesTree(value, accMeta, out, globalSettings);
       continue;
     }
 
@@ -95,7 +95,7 @@ function flattenRoutesTree(node, accMeta, out) {
         afters: [...(accMeta.afters || []), ...(value.afterEnter ? [value.afterEnter] : [])],
         layout: value.layout || accMeta.layout  // Передаем layout группы
       };
-      flattenRoutesTree(value.routes, nextMeta, out);
+      flattenRoutesTree(value.routes, nextMeta, out, globalSettings);
       continue;
     }
 
@@ -148,7 +148,13 @@ export function setRoutes(routesConfig) {
   globalSettings = extractGlobalSettings(routesConfig);
   
   const flattened = {};
-  flattenRoutesTree(routesConfig, { prefix: '', middleware: [], befores: [], afters: [], layout: null }, flattened);
+  flattenRoutesTree(routesConfig, { 
+    prefix: '', 
+    middleware: [...(globalSettings.defaultMiddleware || [])], 
+    befores: [...(globalSettings.defaultGuards?.beforeEnter ? [globalSettings.defaultGuards.beforeEnter] : [])], 
+    afters: [...(globalSettings.defaultGuards?.afterEnter ? [globalSettings.defaultGuards.afterEnter] : [])], 
+    layout: globalSettings.defaultLayout 
+  }, flattened, globalSettings);
   routes = flattened;
 }
 
