@@ -19,6 +19,7 @@ import {
 import { isLazyComponent, loadLazyComponent } from './core/resolve.js';
 import { getRoutes } from './core/routes-store.js';
 import { matchRoute } from './core/route-pattern.js';
+import { createSmartPrefetch } from './core/prefetch.js';
 import { setContext } from 'svelte';
 import { writable } from 'svelte/store';
 
@@ -27,6 +28,9 @@ export function createNavigation(routesConfig = {}) {
   // Устанавливаем routes
   setRoutes(routesConfig);
   let currentPath = window.location.pathname;
+
+  // Создаем экземпляр умного prefetch для отслеживания навигации
+  const smartPrefetch = createSmartPrefetch(10);
 
   // Создаем реактивный store с компонентом, props и состоянием загрузки
   const currentComponent = writable({
@@ -145,8 +149,12 @@ export function createNavigation(routesConfig = {}) {
       }
 
       // 5. Если все middleware прошли успешно, выполняем навигацию
+      const fromPath = currentPath;
       currentPath = toPath;
       window.history.pushState({}, '', fullPath);
+
+      // Записываем навигацию для умного prefetch
+      smartPrefetch.recordNavigation(fromPath, toPath);
 
       // Обновляем дополнительные props
       updateAdditionalProps(additionalProps);
@@ -281,7 +289,11 @@ export function createNavigation(routesConfig = {}) {
       }
 
       // Если все middleware прошли успешно, выполняем навигацию
+      const fromPath = currentPath;
       currentPath = toPath;
+
+      // Записываем навигацию для умного prefetch
+      smartPrefetch.recordNavigation(fromPath, toPath);
 
       // Устанавливаем состояние загрузки
       currentComponent.update(state => ({
@@ -343,6 +355,9 @@ export function createNavigation(routesConfig = {}) {
 
   // Передаем функцию navigate через контекст
   setContext('navigate', navigate);
+
+  // Передаем smartPrefetch через контекст для использования в LinkTo
+  setContext('smartPrefetch', smartPrefetch);
 
   // Возвращаем store напрямую
   return currentComponent;

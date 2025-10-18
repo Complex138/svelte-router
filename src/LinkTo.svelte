@@ -1,7 +1,7 @@
 <script>
   import { getContext, onMount } from 'svelte';
   import { linkTo } from './Router.js';
-  import { prefetchRoute } from './core/prefetch.js';
+  import { prefetchRoute, prefetchRelated } from './core/prefetch.js';
 
   export let route;
   export let params = {};
@@ -10,11 +10,12 @@
   export let className = '';
 
   // Prefetch опции
-  export let prefetch = 'hover'; // 'hover' | 'visible' | 'mount' | 'none'
+  export let prefetch = 'hover'; // 'hover' | 'visible' | 'mount' | 'none' | 'smart'
   export let prefetchDelay = 50; // Задержка для hover prefetch (ms)
 
-  // Получаем функцию navigate из контекста
+  // Получаем функцию navigate и smartPrefetch из контекста
   const navigate = getContext('navigate');
+  const smartPrefetch = getContext('smartPrefetch');
 
   // Создаем URL с параметрами (без объектов)
   const href = linkTo(route, params, queryParams);
@@ -46,6 +47,22 @@
         prefetchRoute(route).catch(err => console.warn('Prefetch failed:', err));
         prefetchTimeout = null;
       }, prefetchDelay);
+    } else if (prefetch === 'smart' && smartPrefetch && !prefetchTimeout) {
+      prefetchTimeout = setTimeout(async () => {
+        try {
+          // Prefetch текущий роут
+          await prefetchRoute(route);
+          
+          // Prefetch предсказанные связанные роуты
+          const predicted = smartPrefetch.predictNext(route);
+          if (predicted.length > 0) {
+            await prefetchRelated(predicted.slice(0, 2), { parallel: true });
+          }
+        } catch (err) {
+          console.warn('Smart prefetch failed:', err);
+        }
+        prefetchTimeout = null;
+      }, prefetchDelay);
     }
   }
 
@@ -60,6 +77,19 @@
     // Prefetch при монтировании компонента
     if (prefetch === 'mount') {
       prefetchRoute(route).catch(err => console.warn('Prefetch on mount failed:', err));
+    } else if (prefetch === 'smart' && smartPrefetch) {
+      // Умный prefetch при монтировании
+      (async () => {
+        try {
+          await prefetchRoute(route);
+          const predicted = smartPrefetch.predictNext(route);
+          if (predicted.length > 0) {
+            await prefetchRelated(predicted.slice(0, 2), { parallel: true });
+          }
+        } catch (err) {
+          console.warn('Smart prefetch on mount failed:', err);
+        }
+      })();
     }
 
     // Prefetch при появлении в viewport
@@ -68,7 +98,22 @@
         (entries) => {
           entries.forEach((entry) => {
             if (entry.isIntersecting) {
-              prefetchRoute(route).catch(err => console.warn('Prefetch on visible failed:', err));
+              if (prefetch === 'smart' && smartPrefetch) {
+                // Умный prefetch при видимости
+                (async () => {
+                  try {
+                    await prefetchRoute(route);
+                    const predicted = smartPrefetch.predictNext(route);
+                    if (predicted.length > 0) {
+                      await prefetchRelated(predicted.slice(0, 2), { parallel: true });
+                    }
+                  } catch (err) {
+                    console.warn('Smart prefetch on visible failed:', err);
+                  }
+                })();
+              } else {
+                prefetchRoute(route).catch(err => console.warn('Prefetch on visible failed:', err));
+              }
               // Отключаем наблюдатель после первого prefetch
               if (observer) {
                 observer.disconnect();

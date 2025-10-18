@@ -1103,6 +1103,11 @@ The router includes automatic prefetching to load components before navigation f
   Settings
 </LinkTo>
 
+<!-- Smart prefetch - learns from navigation patterns and prefetches related routes -->
+<LinkTo route="/dashboard" prefetch="smart">
+  Dashboard
+</LinkTo>
+
 <!-- Disable prefetch -->
 <LinkTo route="/logout" prefetch="none">
   Logout
@@ -1118,6 +1123,7 @@ The router includes automatic prefetching to load components before navigation f
 - `hover` (default) - Prefetch when mouse hovers over link (50ms delay)
 - `visible` - Prefetch when link enters viewport (uses Intersection Observer)
 - `mount` - Prefetch immediately when link component mounts
+- `smart` - **NEW!** Intelligent prefetch that learns from navigation patterns and prefetches related routes
 - `none` - Disable automatic prefetching
 
 #### Manual Prefetching
@@ -1303,6 +1309,24 @@ Prefetched components are automatically cached to avoid redundant loads:
     prefetchWithNetworkAware('/large-report');
   });
 </script>
+```
+
+**Example 6: Smart prefetch in LinkTo components**
+```javascript
+<!-- Smart prefetch learns from user navigation patterns -->
+<LinkTo route="/dashboard" prefetch="smart">
+  Dashboard
+</LinkTo>
+
+<!-- Smart prefetch with custom delay -->
+<LinkTo route="/profile" prefetch="smart" prefetchDelay={200}>
+  Profile
+</LinkTo>
+
+<!-- Smart prefetch on visible (combines visibility detection with smart prediction) -->
+<LinkTo route="/reports" prefetch="smart">
+  Reports
+</LinkTo>
 ```
 
 ### Preloading Components
