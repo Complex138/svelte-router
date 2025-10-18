@@ -52,6 +52,7 @@ export function extractNavigationParams(routePattern, paramsOrConfig = {}, query
     // Auto-detection
     const routeParams = extractRouteParams(routePattern);
     params = {};
+    query = {}; // ✅ Инициализируем query
     props = {};
     
     for (const [key, value] of Object.entries(paramsOrConfig)) {
