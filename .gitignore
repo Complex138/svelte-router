@@ -28,3 +28,6 @@ Thumbs.db
 # Logs
 logs
 *.log
+full-technical-audit.md
+routers_comparison.md
+svelte_router_analysis.md
